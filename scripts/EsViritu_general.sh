@@ -147,10 +147,10 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 
 		# sort bam files, keep alignments to accesstions passing threshold, get consensus fastas of those accessions
 		## samtools view, consensus, sed NNs
-		samtools sort -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam -o ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam
-		samtools index ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam
+		samtools sort -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.bam -o ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.sort.bam
+		samtools index ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.sort.bam
 		REFS=$( cat ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.txt | tr "\n" " " )
-		samtools view -@ $CPUS -b ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam ${REFS} > ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.bam
+		samtools view -@ $CPUS -b ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.sort.bam ${REFS} > ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.bam
 		samtools consensus -@ $CPUS -f fasta ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.bam | bioawk -c fastx '{print ">"$name ; print $seq}' |sed 's/NN//g' >  ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta
 
 		# pairwise comparison of consensus sequences
@@ -171,7 +171,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 
 		# make fastq file from bam file of initial coverm alignment
 		##	4) samtools fastq on mapped reads, coverm on these reads to new minimap index
-		samtools fastq -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam > ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq
+		samtools fastq -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.bam > ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq
 
 		# run coverm with just previously aligned reads and dereplicated reference sequences
 		coverm contig --interleaved ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq -r ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
