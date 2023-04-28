@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipelin
 
 required_args = parser.add_argument_group(' REQUIRED ARGUMENTS for EsViritu ')
 
-required_args.add_argument("-r", "--reads", nargs="+", action="append",
+required_args.add_argument("-r", "--reads", nargs="+",
                            dest="READS", required=True, 
                            help='read file(s) in .fastq format. You can specify more than one separated by a space')
 required_args.add_argument("-s", "--sample", 
@@ -58,7 +58,7 @@ optional_args.add_argument("--keep",
 
 args = parser.parse_args()
 
-READS = [item for sublist in args.READS for item in sublist]
+#READS = [item for sublist in args.READS for item in sublist]
 
 def is_tool(name):
 	"""Check whether `name` is on PATH."""
@@ -103,12 +103,12 @@ else:
 
 if str(args.MODE) == "general" :
     subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
+		     print(args.READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
 	         str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
 	         str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])
 elif str(args.MODE) == "curated" :
     subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_curated.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
+		     print(args.READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
 	        str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
             str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])	
 else:
