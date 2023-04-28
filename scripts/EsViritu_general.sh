@@ -230,7 +230,7 @@ if [ -s ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv ] && [ -s ${OUT_DIR}/${SAMP
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running reactablefmtr to make html table @ $MDYT"
 
-	Rscript ${ESVIRITU_DIR}/EsViritu_general_reactable1.R ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv ${OUT_DIR} ${SAMPLE_ID}
+	Rscript ${ESVIRITU_DIR}/EsViritu_general_reactable1.R ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv ${OUT_DIR} ${SAMPLE}
 
 else
 	echo "either ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv or ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv were not found. Could not make reactable."
