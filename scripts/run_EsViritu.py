@@ -58,7 +58,6 @@ optional_args.add_argument("--keep",
 
 args = parser.parse_args()
 
-READS = [item for sublist in args.READS for item in sublist]
 
 print(READS)
 
@@ -105,12 +104,12 @@ else:
 
 if str(args.MODE) == "general" :
     subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
+		     str(args.READS[]), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
 	         str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
 	         str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])
 elif str(args.MODE) == "curated" :
     subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_curated.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
+		     str(args.READS[]), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
 	        str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
             str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])	
 else:
