@@ -98,7 +98,7 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 	##trim
 	##filter
 	cat "${READS}" | \
-	fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html | \
+	fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
 	minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
 	samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 
@@ -134,20 +134,20 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running CoverM @ $MDYT"
 	
-	coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${OUT_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+	coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
 
 	# Dereplicate hits from initial coverm
 	# Checking for contigs with 1000bp of coverage or 50% breadth of coverage
-	LINECOUNT=$( tail -n+2 ${OUT_DIR}/${SAMPLE}.coverm.tsv | awk '{OFS=FS="\t"}{ if (($3/$2) >= 0.5 || $3 >= 1000) {print} }'  | wc -l )
+	LINECOUNT=$( tail -n+2 ${TEMP_DIR}/${SAMPLE}.coverm.tsv | awk '{OFS=FS="\t"}{ if (($3/$2) >= 0.5 || $3 >= 1000) {print} }'  | wc -l )
 	if [ $LINECOUNT -ge 1 ] ; then
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: Getting preliminary consensus sequences and all-vs-all comparison @ $MDYT"
 		# list of accessions with >1000 nt or >50% coverage (passing threshold)
-		tail -n+2 ${OUT_DIR}/${SAMPLE}.coverm.tsv | awk '{OFS=FS="\t"}{ if ($3>=1000 || ($3/$2)>=0.5) {print $1} }' > ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.txt
+		tail -n+2 ${TEMP_DIR}/${SAMPLE}.coverm.tsv | awk '{OFS=FS="\t"}{ if ($3>=1000 || ($3/$2)>=0.5) {print $1} }' > ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.txt
 
 		# sort bam files, keep alignments to accesstions passing threshold, get consensus fastas of those accessions
 		## samtools view, consensus, sed NNs
-		samtools sort -@ $CPUS ${OUT_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam -o ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam
+		samtools sort -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam -o ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam
 		samtools index ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam
 		REFS=$( cat ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.txt | tr "\n" " " )
 		samtools view -@ $CPUS -b ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.sort.bam ${REFS} > ${TEMP_DIR}/${SAMPLE}.accessions_prelim_threshold1.bam
@@ -171,7 +171,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 
 		# make fastq file from bam file of initial coverm alignment
 		##	4) samtools fastq on mapped reads, coverm on these reads to new minimap index
-		samtools fastq -@ $CPUS ${OUT_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam > ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq
+		samtools fastq -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.fastq.bam > ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq
 
 		# run coverm with just previously aligned reads and dereplicated reference sequences
 		coverm contig --interleaved ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq -r ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
@@ -184,7 +184,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		samtools index ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam
 		F_CONS=$( tail -n+2 ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv | awk '{OFS=FS="\t"}{ if ($3>=1000 || ($3/$2)>=0.5) {print $1} }' | tr "\n" " " )
 		samtools view -@ $CPUS -b ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam ${F_CONS} > ${TEMP_DIR}/accessions_final_threshold1.bam
-		samtools consensus -@ $CPUS -f fasta ${TEMP_DIR}/accessions_final_threshold1.bam >  ${TEMP_DIR}/${OUT_DIR}.final.consensus.with_NNs.fasta
+		samtools consensus -@ $CPUS -f fasta ${TEMP_DIR}/accessions_final_threshold1.bam >  ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta
 
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: Generating detection and abundance table @ $MDYT"
