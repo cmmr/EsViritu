@@ -47,7 +47,7 @@ if [ ! -d ${DB_DIR} ] ; then
 	exit
 fi
 
-if [ ! -s ${DB_DIR}virus_pathogen_database.mmi ] ; then
+if [ ! -s ${DB_DIR}/virus_pathogen_database.mmi ] ; then
 	echo "can't find minimap2 index for pipeline. should be: ${DB_DIR}/virus_pathogen_database.mmi"
 	echo "exiting"
 	exit
