@@ -1,3 +1,9 @@
+.DS_Store
+**/.DS_Store
+
+DBs/
+filter_seqs/
+
 # History files
 .Rhistory
 .Rapp.history
