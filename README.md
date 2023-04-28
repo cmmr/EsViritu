@@ -77,6 +77,8 @@ wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/viral/Sinsheimervirus_phiX174/l
 gunzip GCF_000819615.1_ViralProj14015_genomic.fna.gz
 
 ## download human genome and gunzip
+wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
+gunzip GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
 
 ## concatenate files
 cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna > filter_seqs.fna

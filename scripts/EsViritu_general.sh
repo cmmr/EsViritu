@@ -236,6 +236,15 @@ else
 	echo "either ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv or ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv were not found. Could not make reactable."
 fi
 
+### ! insert compare consensus to reference
 
+# delete temp
+if [ "$KEEP" == "True" ] ; then
+	echo "Keeping temporary files in: ${TEMP_DIR}"
+else
+	rm ${TEMP_DIR}/*
+fi
 
+MDYT=$( date +"%m-%d-%y---%T" )
+echo "EsViritu general mode is finishing @ $MDYT"
 

@@ -58,7 +58,7 @@ optional_args.add_argument("--keep",
 
 args = parser.parse_args()
 
-READS = [item for sublist in args.options for item in sublist]
+READS = [item for sublist in args.READS for item in sublist]
 
 def is_tool(name):
 	"""Check whether `name` is on PATH."""
