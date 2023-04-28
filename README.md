@@ -1,2 +1,197 @@
 # EsViritu
- Read mapping pipeline for detection and measurement of virus pathogens from metagenomic data
+
+Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples.
+
+Pipeline to calculate read abundance and genome coverage for human and animal virus genomes. Quality filtering and de-replication steps are also conducted.
+
+NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of November 16th, 2022 (EsViritu DB v2.0.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+
+## Schematic
+
+![Schematic](schematic/pipeline_schematic.png)
+
+Logo by [Adrien Assie](https://github.com/aassie)
+
+## Threshold of detection
+
+1)  Virus genomes or segments are considered "detected" if: 1) at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
+
+**OR**
+
+2)  at least 50% of the nucelotides of the reference genome/segment have coverage by 1 or more reads (relevant for references under 2 kb)
+
+## Installation
+
+**I have only tested this on Linux**
+
+1)  Clone repo
+
+`git clone https://github.com/cmmr/EsViritu.git`
+
+2)  Go to `EsViritu` directory.
+
+`cd EsViritu`
+
+3)  use the file `environments/EsViritu.yml` with `conda create` to generate the environment used with this tool
+
+`conda env create --file environments/EsViritu.yml`
+
+4)  Activate the environment
+
+`conda activate EsViritu`
+
+5)  Install the `R` package `dataui` manually in an R session
+
+`R`
+
+then:
+
+`remotes::install_github("timelyportfolio/dataui")`
+
+6)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+
+`wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
+
+`md5sum DB_v2.0.2.tar.gz`
+
+should return `8e207e6a9465d7e40e948d7559b014c4`
+
+`tar -xvf DB_v2.0.2.tar.gz`
+
+`rm DB_v2.0.2.tar.gz`
+
+## Database for filtering out host reads and spike-ins
+
+The script will look for a file at `filter_seqs/filter_seqs.fna` which could be any fasta-formatted sequence file you want to use to remove matching reads (e.g. from host or spike-in).
+
+Here are instructions for downloading and formatting the human genome and phiX spike-in (3 GB decompressed).
+
+```         
+cd EsViritu
+mkdir filter_seqs && cd filter_seqs
+
+## download phiX genome and gunzip
+wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/viral/Sinsheimervirus_phiX174/latest_assembly_versions/GCF_000819615.1_ViralProj14015/GCF_000819615.1_ViralProj14015_genomic.fna.gz
+gunzip GCF_000819615.1_ViralProj14015_genomic.fna.gz
+
+## download human genome and guzip
+
+## concatenate files
+cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna > filter_seqs.fna
+
+## optionally delete separate files
+rm GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna
+```
+
+Remember to set `-f True` to actually filter these sequences.
+
+
+## Modules Within Tool
+
+1)  "General" module: Returns a deliverable on all detected virus sequences.
+2)  "Curated" module: Returns a deliverable with information on *each* virus in the "curated pathogen" list even if it's below the level of detection. (see database files)
+
+### Step-by-step Description of "General" Module
+
+-   inputs are .fastq files
+
+1)  (OPTIONAL) Reads are filtered for quality and length, adapters are removed, then reads mapping to human genome or phiX spike in are removed. Must set flags `-q True -f True`.
+2)  Filtered reads are aligned to a dereplicated database of human and animal virus genomes/segments. (read alignment: \>= 90% ANI and \>= 90% read coverage)
+3)  Consensus sequences of each detected reference genome/segment are determined, then all consensus sequences are compared pair-wise to detect and dereplicate near-identical sequences.
+4)  The reads from the original alignment are re-aligned to the dereplicated references.
+5)  Consensus sequences are determined for each detected dereplicated genome/segment. `*.final.consensus.with_NNs.fasta`
+6)  breadth, depth, and abundance of read coverage is determined for each detected genome/segment.
+7)  (OPTIONAL) Percent identity is calculated between each consensus and it's reference. Must set flags `-i True`. `*consensus_to_refence.tsv`
+8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable with a visualization of read coverage `*.reactable.html` is generated.
+
+### Step-by-step Description of "Curated" Module
+
+-   inputs are .fastq files
+
+1)  (OPTIONAL) Reads are filtered for quality and length, adapters are removed, then reads mapping to human genome or phiX spike in are removed. Must set flags `-q True -f True`.
+2)  Filtered reads are aligned to a dereplicated database of human and animal virus genomes/segments. (read alignment: \>= 90% ANI and \>= 90% read coverage)
+3)  Consensus sequences of each detected reference genome/segment are determined, then all consensus sequences are compared pair-wise to detect and derplicate near-identical sequences.
+4)  The reads from the original alignment are re-aligned to the dereplicated references, PLUS all remaining "curated pathogen" references.
+5)  Consensus sequences are determined for each detected dereplicated reference. `*.final.consensus.with_NNs.fasta`
+6)  breadth, depth, and abundance of read coverage is determined for each reference from the "curated pathogens".
+7)  (OPTIONAL) Percent identity is calculated between each consensus and it's reference. Must set flags `-i True`. `*consensus_to_refence.tsv`
+8)  With this information and taxonomical data on each "curated pathogen" reference, a summary table `*.genome_info.tsv` and a reactable with a visualization of read coverage `*.reactable.html` is generated.
+
+# Running the tool
+
+**I have only tested this on Linux**
+
+You might run this as part of a bash script to do your own upstream read processing, etc, but these are the basic instructions.
+
+*Required inputs:*
+
+`-r reads file (.fastq)`
+
+`-s sample name`
+
+`-t # of threads`
+
+`-o output directory (may be shared with other samples)`
+
+Activate the conda environment:
+
+`conda activate EsViritu`
+
+Individual samples can be run with the python script. E.g.:
+
+"General" module:
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general
+```
+
+Using multiple input .fastq files (`EsViritu` doesn't used paired-end info)
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general
+```
+
+With pre-filtering steps:
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -i True
+```
+
+To generate consensus vs reference comparison:
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -q True -f True
+```
+
+"Curated" module:
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -r1 /path/to/reads/myreads.fastq -e .txt.bz2 -s sample_ABC -p p1234 -o myproject_EsViritu_curated1 -m curated
+```
+
+Help menu
+
+```         
+python /path/to/EsViritu/scripts/run_EsViritu.py -h
+```
+
+## Make a Summary for Batch of Reports
+
+*Please don't mix "General" and "Curated" outputs into one report*
+
+Run the batch summary bash script with the following arguments:
+
+1)  Directory containing the output files (`*.threshold.info.tsv` & `*.mean_cov.tsv` for each sample)
+2)  Name/stem for output files
+
+Example:
+
+```         
+bash /path/to/EsViritu/scripts/make_batch_summary_reports1.sh myproject_EsViritu_general1 myproject_report_out
+```
+
+This command will generate the table `myproject_report_out.coverm.combined.tax.tsv` and the reactable `myproject_report_out.batch_detected_viruses.html` both of which summarize information about all the samples in the given directory.
+
+# Citation
+
+(insert)
