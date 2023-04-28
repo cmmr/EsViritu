@@ -60,9 +60,9 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 
 `rm DB_v2.0.2.tar.gz`
 
-## Database for filtering out host reads and spike-ins
+## (OPTIONAL) Database for filtering out host reads and spike-ins
 
-The script will look for a file at `filter_seqs/filter_seqs.fna` which could be any fasta-formatted sequence file you want to use to remove matching reads (e.g. from host or spike-in).
+You could filter unwanted sequences out upstream of this tool, but this will allow you to do it within `EsViritu` using `minimap2`. The pipeline script will look for a file at `filter_seqs/filter_seqs.fna` which could be any fasta-formatted sequence file you want to use to remove matching reads (e.g. from host or spike-in).
 
 Here are instructions for downloading and formatting the human genome and phiX spike-in (3 GB decompressed).
 
@@ -74,7 +74,7 @@ mkdir filter_seqs && cd filter_seqs
 wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/viral/Sinsheimervirus_phiX174/latest_assembly_versions/GCF_000819615.1_ViralProj14015/GCF_000819615.1_ViralProj14015_genomic.fna.gz
 gunzip GCF_000819615.1_ViralProj14015_genomic.fna.gz
 
-## download human genome and guzip
+## download human genome and gunzip
 
 ## concatenate files
 cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna > filter_seqs.fna
@@ -151,13 +151,13 @@ Using multiple input .fastq files (`EsViritu` doesn't used paired-end info)
 python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general
 ```
 
-With pre-filtering steps:
+To generate consensus vs reference comparison:
 
 ```         
 python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -i True
 ```
 
-To generate consensus vs reference comparison:
+With pre-filtering steps:
 
 ```         
 python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -q True -f True

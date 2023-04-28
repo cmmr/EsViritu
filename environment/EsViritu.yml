@@ -4,6 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - python=3.11.0
   - r-rcolorbrewer
   - minimap2[version='>=2.21']
   - r-scales
