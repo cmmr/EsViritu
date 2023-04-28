@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - python=3.11.0
+  - blast
   - r-rcolorbrewer
   - minimap2[version='>=2.21']
   - r-scales

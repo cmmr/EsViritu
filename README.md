@@ -32,7 +32,7 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 `cd EsViritu`
 
-3)  use the file `environments/EsViritu.yml` with `conda create` to generate the environment used with this tool
+3)  use the file `environment/EsViritu.yml` with `conda create` to generate the environment used with this tool
 
 `conda env create --file environments/EsViritu.yml`
 
@@ -49,6 +49,8 @@ then:
 `remotes::install_github("timelyportfolio/dataui")`
 
 6)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+
+`cd EsViritu`
 
 `wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
 
