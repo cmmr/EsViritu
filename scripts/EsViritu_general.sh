@@ -97,7 +97,7 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 
 	##trim
 	##filter
-	cat "${READS}" | \
+	cat ${READS} | \
 	fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
 	minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
 	samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
@@ -107,7 +107,7 @@ elif [ "$QUAL" == "True" ] ; then
 	echo "Time Update: Trimming low quality reads with fastp @ $MDYT"
 
 	##trim
-	cat "${READS}" | \
+	cat ${READS} | \
 	fastp --stdin -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html
 
 elif [ "$FILTER_SEQS" == "True" ] ; then
@@ -115,7 +115,7 @@ elif [ "$FILTER_SEQS" == "True" ] ; then
 	echo "Time Update: Aligning reads to filter_seqs.fna to remove host/spike-in @ $MDYT"
 
 	##filter
-	cat "${READS}" | 
+	cat ${READS} | 
 	minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 
 else
@@ -123,7 +123,7 @@ else
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Concatenating input reads @ $MDYT"
 
-	cat "${READS}" > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 fi
 
 if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
