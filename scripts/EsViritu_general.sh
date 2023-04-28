@@ -134,7 +134,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running CoverM @ $MDYT"
 	
-	coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${OUT_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+	coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${OUT_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
 
 	# Dereplicate hits from initial coverm
 	# Checking for contigs with 1000bp of coverage or 50% breadth of coverage
