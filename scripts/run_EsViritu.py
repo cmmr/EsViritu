@@ -69,6 +69,7 @@ print(completedProc.returncode)
 if completedProc.returncode != 0 :
     print ("some required R packages are not found. Required:")
     print ("reactable, htmltools, dplyr, reactablefmtr, dataui, data.table, RColorBrewer, viridis, scales, knitr")
+    print ("Did you activate the conda environment?")
     print ("see yml. Exiting")
     quit()
 
