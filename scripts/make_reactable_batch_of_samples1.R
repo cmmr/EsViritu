@@ -79,7 +79,7 @@ nice_table <- combined_data %>%
           number_fmt = scales::percent
         )
       ),
-      RPKM = colDef(
+      RPKMF = colDef(
         maxWidth = 100, 
         style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
         format = colFormat(digits = 1)
