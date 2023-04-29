@@ -48,7 +48,7 @@ optional_args.add_argument('-i', "--compare", dest="COMPARE", type=str2bool, def
                            help='True or False. Calculate percent identity between sample consensus and reference sequences?')
 optional_args.add_argument("-m", "--mode", 
                            dest="MODE", type=str, default='general',
-                           help='general or curated. See README.md')
+                           help='Placeholder for future development. Do not change.')
 optional_args.add_argument("--temp", 
                            dest="TEMP_DIR", type=str, default='default',
                            help='path of temporary directory. Default is {OUTPUT_DIR}/{SAMPLE}_temp/')
@@ -60,7 +60,18 @@ args = parser.parse_args()
 
 READS = ' '.join(map(str,args.READS))
 
-print(READS)
+#print(READS)
+
+# check if R script with libraries returns good exit code
+completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
+
+print(completedProc.returncode)
+if completedProc.returncode != 0 :
+    print ("some required R packages are not found. Required:")
+    print ("reactable, htmltools, dplyr, reactablefmtr, dataui, data.table, RColorBrewer, viridis, scales, knitr")
+    print ("see yml. Exiting")
+    quit()
+
 
 def is_tool(name):
 	"""Check whether `name` is on PATH."""
@@ -103,16 +114,7 @@ else:
 	print ("fastp is not found. Exiting.")
 	quit()
 
-if str(args.MODE) == "general" :
-    subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
-	         str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
-	         str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])
-elif str(args.MODE) == "curated" :
-    subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_curated.sh', 
-		     str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
-	        str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
-            str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])	
-else:
-	print("-m argument must be general or curated.")
-
+subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
+            str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
+            str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
+            str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])

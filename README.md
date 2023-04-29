@@ -87,15 +87,10 @@ cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_gen
 rm GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna
 ```
 
-Remember to set `-f True` to actually filter these sequences.
+Remember to set `-f True` to run the filtering step.
 
 
-## Modules Within Tool
-
-1)  "General" module: Returns a deliverable on all detected virus sequences.
-2)  "Curated" module: Returns a deliverable with information on *each* virus in the "curated pathogen" list even if it's below the level of detection. (see database files)
-
-### Step-by-step Description of "General" Module
+### Step-by-step Description of Pipeline
 
 -   inputs are .fastq files
 
@@ -108,24 +103,13 @@ Remember to set `-f True` to actually filter these sequences.
 7)  (OPTIONAL) Percent identity is calculated between each consensus and it's reference. Must set flags `-i True`. `*consensus_to_refence.tsv`
 8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable with a visualization of read coverage `*.reactable.html` is generated.
 
-### Step-by-step Description of "Curated" Module
 
--   inputs are .fastq files
-
-1)  (OPTIONAL) Reads are filtered for quality and length, adapters are removed, then reads mapping to human genome or phiX spike in are removed. Must set flags `-q True -f True`.
-2)  Filtered reads are aligned to a dereplicated database of human and animal virus genomes/segments. (read alignment: \>= 90% ANI and \>= 90% read coverage)
-3)  Consensus sequences of each detected reference genome/segment are determined, then all consensus sequences are compared pair-wise to detect and derplicate near-identical sequences.
-4)  The reads from the original alignment are re-aligned to the dereplicated references, PLUS all remaining "curated pathogen" references.
-5)  Consensus sequences are determined for each detected dereplicated reference. `*.final.consensus.with_NNs.fasta`
-6)  breadth, depth, and abundance of read coverage is determined for each reference from the "curated pathogens".
-7)  (OPTIONAL) Percent identity is calculated between each consensus and it's reference. Must set flags `-i True`. `*consensus_to_refence.tsv`
-8)  With this information and taxonomical data on each "curated pathogen" reference, a summary table `*.genome_info.tsv` and a reactable with a visualization of read coverage `*.reactable.html` is generated.
 
 # Running the tool
 
-**I have only tested this on Linux**
+**I have only tested this on Linux and I doubt it would work on MacOS or Windows**
 
-You might run this as part of a bash script to do your own upstream read processing, etc, but these are the basic instructions.
+You might run this as part of a bash script, do your own upstream read processing, etc, but these are the basic instructions.
 
 *Required inputs:*
 
@@ -143,34 +127,28 @@ Activate the conda environment:
 
 Individual samples can be run with the python script. E.g.:
 
-"General" module:
+Basic run with 1 .fastq file:
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 Using multiple input .fastq files (`EsViritu` doesn't used paired-end info)
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 To generate consensus vs reference comparison:
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -i True
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -i True
 ```
 
 With pre-filtering steps:
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -m general -q True -f True
-```
-
-"Curated" module:
-
-```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r1 /path/to/reads/myreads.fastq -e .txt.bz2 -s sample_ABC -p p1234 -o myproject_EsViritu_curated1 -m curated
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
 ```
 
 Help menu
@@ -181,8 +159,6 @@ python /path/to/EsViritu/scripts/run_EsViritu.py -h
 
 ## Make a Summary for Batch of Reports
 
-*Please don't mix "General" and "Curated" outputs into one report*
-
 Run the batch summary bash script with the following arguments:
 
 1)  Directory containing the output files (`*.threshold.info.tsv` & `*.mean_cov.tsv` for each sample)
@@ -190,11 +166,26 @@ Run the batch summary bash script with the following arguments:
 
 Example:
 
+Activate conda environment: `conda activate EsViritu`
+
+Then:
 ```         
-bash /path/to/EsViritu/scripts/make_batch_summary_reports1.sh myproject_EsViritu_general1 myproject_report_out
+bash /path/to/EsViritu/scripts/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
 ```
 
 This command will generate the table `myproject_report_out.coverm.combined.tax.tsv` and the reactable `myproject_report_out.batch_detected_viruses.html` both of which summarize information about all the samples in the given directory.
+
+# Limitations and Considerations
+
+Because this tool is based on mapping to reference genomes, recombination and reassortment can cause some issues. 
+
+For example, strains of picornaviruses naturally recombine with other strains. So, if the virus genome in your sample is a recombinant between the 5' half of "Picornavirus Strain A" and the 3' half of "Picornavirus Strain B", the output from `Esviritu` will indicate that you have both "Picornavirus Strain A" and "Picornavirus Strain B" in your sample. In these cases, it's useful to look at the html reports to analyze coverage across the genome(s).
+
+Primarily, we have tested this tool on samples enriched for viruses using hybrid-probe capture (e.g. TWIST Comprehensive Virus Research Panel) because most samples, even those from clinical infections, have a low relative abundance of viral nucleic acid as compared to nucleic acids from host or other microbes. However, we expect that this tool will work with bulk WGS or RNA-seq when a handful of reads from a virus genome are present in a .fastq file.
+
+RPKMF, the abundance metric used in `EsViritu` is:
+
+`(Reads Per Kilobase of reference genome)/(Million reads passing Filtering)`
 
 # Citation
 
