@@ -236,14 +236,49 @@ else
 	echo "either ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv or ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv were not found. Could not make reactable."
 fi
 
-### ! insert compare consensus to reference
+### compare consensus to reference
+if [ "$COMPARE" == "True" ] ; then
+	##
+	if [ -s ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta ] ; then
+		MDYT=$( date +"%m-%d-%y---%T" )
+		echo "Time Update: comparing consensus seqs to references @ $MDYT"
+
+		blastn -query ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -subject ${DB_DIR}/virus_pathogen_database.fna -best_hit_overhang 0.25 \ 
+		-outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore nident" > ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv
+
+		seqkit fx2tab ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -n -C N -C ATGC -l -H > ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv
+
+		if [ -s ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv ] && [ -s ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv ] ; then
+			Rscript ${ESVIRITU_DIR}/Consensuses_vs_Refs_comparison.R ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv ${OUT_DIR} ${SAMPLE}
+		else
+			echo "${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv or ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv NOT FOUND"
+			echo "Cannot generate Consensuses_vs_Refs_comparison table"
+		fi
+
+	else
+		echo "${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta NOT FOUND"
+		
+	fi
+else
+	##
+fi
 
 # delete temp
 if [ "$KEEP" == "True" ] ; then
 	echo "Keeping temporary files in: ${TEMP_DIR}"
 else
+	echo "Removing temp files"
 	rm ${TEMP_DIR}/*
 fi
+
+
+echo "Main Output Files Generated in ${OUT_DIR}/"
+
+find ${OUT_DIR}/ -type f -name "${SAMPLE}.detected_virus.info.tsv"
+find ${OUT_DIR}/ -type f -name "${SAMPLE}.final.consensus.with_NNs.fasta"
+find ${OUT_DIR}/ -type f -name "${SAMPLE}_EsViritu_reactable.html"
+find ${OUT_DIR}/ -type f -name "${SAMPLE}_consensus_seqs_vs_ref_seqs.tsv"
+
 
 MDYT=$( date +"%m-%d-%y---%T" )
 echo "EsViritu general mode is finishing @ $MDYT"
