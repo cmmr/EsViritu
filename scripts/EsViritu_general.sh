@@ -243,8 +243,7 @@ if [ "$COMPARE" == "True" ] ; then
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: comparing consensus seqs to references @ $MDYT"
 
-		blastn -query ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -subject ${DB_DIR}/virus_pathogen_database.fna -best_hit_overhang 0.25 \ 
-		-outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore nident" > ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv
+		blastn -query ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -subject ${DB_DIR}/virus_pathogen_database.fna -best_hit_overhang 0.25 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore nident" > ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv
 
 		seqkit fx2tab ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -n -C N -C ATGC -l -H > ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv
 
