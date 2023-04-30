@@ -56,7 +56,11 @@ combined_data <- na.omit(combined_data)
 
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$reference_length
 
-combined_data <- subset(combined_data, select = c("sample_ID", "seq_pool_ID", "sequence_name", "accession", "reference_length", "Percent_covered", "RPKMF", "reads_aligned", "genus", "species", "subspecies", "coverage"))
+combined_data <- subset(combined_data, 
+                        select = c("sample_ID", "sequence_name", "accession", 
+                                   "reference_length", "Percent_covered", 
+                                   "RPKMF", "reads_aligned", "genus", "species", 
+                                   "subspecies", "coverage"))
 
 nice_table <- combined_data %>%
   reactable(
