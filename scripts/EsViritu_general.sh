@@ -190,7 +190,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		echo "Time Update: Generating detection and abundance table @ $MDYT"
 
 		# make an info table on all the genomes detected in the sample based on the coverm stats, number of filtered reads, and the metadata table Comp_viral_panel_w_curated_plus_extra_v2.0.2.all_metadata.tsv
-		echo -e "accession\treference_length\tcovered_bases\treads_aligned\tmean_coverage\tRPKMF\tsequence_name\ttaxid\tkingdom\tphylum\tclass\torder\tfamily\tgenus\tspecies\tsubspecies\tstrain\tSAMPLE\ttotal_filtered_reads_in_sample" > ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv
+		echo -e "accession\treference_length\tcovered_bases\treads_aligned\tmean_coverage\tRPKMF\tsequence_name\ttaxid\tkingdom\tphylum\tclass\torder\tfamily\tgenus\tspecies\tsubspecies\tstrain\tsample_ID\ttotal_filtered_reads_in_sample" > ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv
 		tail -n+2 ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv | awk -v readq="$FILTERED_READS" '{OFS=FS="\t"}{ if (($3/$2) >= 0.5 || $3 >= 1000) {print $0, (($4/($2/1000)/readq)*1000000)} }' | while read LINE ; do 
 			ACC=$( echo "$LINE" | cut -f1 )
 			### update this file
