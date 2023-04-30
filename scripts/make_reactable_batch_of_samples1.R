@@ -26,7 +26,7 @@ if (length(args)!=3) {
 }
 
 
-coverage_data <- fread(args[1], sep = "\t", header = FALSE, col.names = c("accession", "start_base", "end_base", "mean_depth"))
+coverage_data <- fread(args[1], sep = "\t", header = FALSE, col.names = c("sample_ID", "accession", "start_base", "end_base", "mean_depth"))
 
 genome_data <- fread(args[2], sep = "\t", header = TRUE)
 
