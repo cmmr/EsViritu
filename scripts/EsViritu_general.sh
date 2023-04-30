@@ -259,8 +259,6 @@ if [ "$COMPARE" == "True" ] ; then
 		echo "${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta NOT FOUND"
 		
 	fi
-else
-	##
 fi
 
 # delete temp
