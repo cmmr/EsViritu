@@ -12,6 +12,10 @@ NOTE: The database used by `Esviritu` should cover all human and animal viruses 
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
+
+## Interactive report of detected viruses
+![Example](schematic/example_report_screengrab1.png)
+
 ## Threshold of detection
 
 1)  Virus genomes or segments are considered "detected" if: 1) at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
