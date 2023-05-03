@@ -29,6 +29,11 @@ fi
 ## temporary directory variable setup
 if [ "$TEMP_DIR" == "default" ] ; then
 	TEMP_DIR="${OUT_DIR}/${SAMPLE}_temp"
+
+elif [ -d $TEMP_DIR ] ; then
+	MDYT_g=$( date +"%m-%d-%y---%T" | sed 's/:/_/g' )
+	TEMP_DIR="${TEMP_DIR}/${SAMPLE}_temp_${MDYT_g}"
+
 fi
 
 # check filter_seqs
