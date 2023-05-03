@@ -44,7 +44,7 @@ optional_args.add_argument('-q', "--qual", dest="QUAL", type=str2bool, default='
                            help='True or False. Remove low-quality reads with fastp?')
 optional_args.add_argument('-f', "--filter_seqs", dest="FILTER_SEQS", type=str2bool, default='False',
                            help='True or False. Remove reads aligning to sequences at filter_seqs/filter_seqs.fna ?')
-optional_args.add_argument('-i', "--compare", dest="COMPARE", type=str2bool, default='False',
+optional_args.add_argument('-i', "--compare", dest="COMPARE", type=str2bool, default='True',
                            help='True or False. Calculate percent identity between sample consensus and reference sequences?')
 optional_args.add_argument("-m", "--mode", 
                            dest="MODE", type=str, default='general',

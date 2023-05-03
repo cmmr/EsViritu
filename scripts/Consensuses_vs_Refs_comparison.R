@@ -42,6 +42,10 @@ sum_meta_dt$sample_ID <- as.character(args[4])
 
 setcolorder(sum_meta_dt, "qname")
 
+colnames(sum_meta_dt) <- c("con_name", "ref_name", "num_alns", "percent_ANI", 
+                           "con_cov", "ref_cov", "hit_rank", "Sequence_name",
+                           "genus", "species")
+
 write.table(sum_meta_dt, 
             file = sprintf("%s/%s_consensus_seqs_vs_ref_seqs.tsv", args[3], args[4]),
             quote = F, row.names = F, sep = "\t")

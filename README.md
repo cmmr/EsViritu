@@ -187,6 +187,9 @@ RPKMF, the abundance metric used in `EsViritu` is:
 
 `(Reads Per Kilobase of reference genome)/(Million reads passing Filtering)`
 
+
+For the file `*consensus_seqs_vs_ref_seqs.tsv`, expect `percent_ANI` to be a bit low, as `samtools consensus` (used to generate consensus sequences) is used with conservative settings, so a relatively high number of "N"s may be encoded in the consensus sequence.
+
 # Citation
 
 (insert)
