@@ -184,7 +184,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		samtools index ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam
 		F_CONS=$( tail -n+2 ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv | awk '{OFS=FS="\t"}{ if ($3>=1000 || ($3/$2)>=0.5) {print $1} }' | tr "\n" " " )
 		samtools view -@ $CPUS -b ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam ${F_CONS} > ${TEMP_DIR}/accessions_final_threshold1.bam
-		samtools consensus -@ $CPUS -f fasta ${TEMP_DIR}/accessions_final_threshold1.bam >  ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta
+		samtools consensus -@ $CPUS -f fasta ${TEMP_DIR}/accessions_final_threshold1.bam | bioawk -c fastx '{print ">"$name"__consensus" ; print $seq}' >  ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta
 
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: Generating detection and abundance table @ $MDYT"
@@ -193,7 +193,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		echo -e "accession\treference_length\tcovered_bases\treads_aligned\tmean_coverage\tRPKMF\tsequence_name\ttaxid\tkingdom\tphylum\tclass\torder\tfamily\tgenus\tspecies\tsubspecies\tstrain\tsample_ID\ttotal_filtered_reads_in_sample" > ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv
 		tail -n+2 ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv | awk -v readq="$FILTERED_READS" '{OFS=FS="\t"}{ if (($3/$2) >= 0.5 || $3 >= 1000) {print $0, (($4/($2/1000)/readq)*1000000)} }' | while read LINE ; do 
 			ACC=$( echo "$LINE" | cut -f1 )
-			### update this file
+
 			TAXINFO=$( grep "^$ACC" ${DB_DIR}/virus_pathogen_database.all_metadata.tsv | cut -f 3- )
 			echo -e "${LINE}\t${TAXINFO}\t${SAMPLE}\t${FILTERED_READS}"
 		done >> ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv
@@ -243,14 +243,15 @@ if [ "$COMPARE" == "True" ] ; then
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: comparing consensus seqs to references @ $MDYT"
 
-		blastn -query ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -subject ${DB_DIR}/virus_pathogen_database.fna -best_hit_overhang 0.25 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore nident" > ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv
+		sed 's/NN//g' ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta | \
+		blastn -query - -subject ${DB_DIR}/virus_pathogen_database.fna -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv
 
-		seqkit fx2tab ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta -n -C N -C ATGC -l -H > ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv
+		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv
 
-		if [ -s ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv ] && [ -s ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv ] ; then
-			Rscript ${ESVIRITU_DIR}/Consensuses_vs_Refs_comparison.R ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv ${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv ${OUT_DIR} ${SAMPLE}
+		if [ -s ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ] ; then
+			Rscript ${ESVIRITU_DIR}/Consensuses_vs_Refs_comparison.R ${DB_DIR}/virus_pathogen_database.all_metadata.tsv ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ${OUT_DIR} ${SAMPLE}
 		else
-			echo "${TEMP_DIR}/${SAMPLE}.consensus.with_NNs.VS.refs.blastn.tsv or ${TEMP_DIR}/${SAMPLE}.final.consensus.with_NNs.basecomp1.tsv NOT FOUND"
+			echo "${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv NOT FOUND"
 			echo "Cannot generate Consensuses_vs_Refs_comparison table"
 		fi
 
