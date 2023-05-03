@@ -38,7 +38,9 @@ sum_meta_dt <- merge(sum_ani_removeNNs_dt, seq_meta_dt,
                      by.x = "tname", by.y = "accession") %>%
   arrange(qname, hit_rank)
 
-sum_meta_dt$sample_ID <- str(args[4])
+sum_meta_dt$sample_ID <- as.character(args[4])
+
+setcolorder(sum_meta_dt, "qname")
 
 write.table(sum_meta_dt, 
             file = sprintf("%s/%s_consensus_seqs_vs_ref_seqs.tsv", args[3], args[4]),
