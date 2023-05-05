@@ -1,8 +1,7 @@
 # EsViritu
 
-Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples.
+Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples.
 
-Pipeline to calculate read abundance and genome coverage for human and animal virus genomes. Quality filtering and de-replication steps are also conducted.
 
 NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of November 16th, 2022 (EsViritu DB v2.0.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
 
@@ -18,7 +17,9 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ## Threshold of detection
 
-1)  Virus genomes or segments are considered "detected" if: 1) at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
+Virus genomes or segments are considered "detected" if: 
+
+1)  at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
 
 **OR**
 
@@ -104,8 +105,8 @@ Remember to set `-f True` to run the filtering step.
 4)  The reads from the original alignment are re-aligned to the dereplicated references.
 5)  Consensus sequences are determined for each detected dereplicated genome/segment. `*.final.consensus.with_NNs.fasta`
 6)  breadth, depth, and abundance of read coverage is determined for each detected genome/segment.
-7)  (OPTIONAL) Percent identity is calculated between each consensus and it's reference. Must set flags `-i True`. `*consensus_to_refence.tsv`
-8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable with a visualization of read coverage `*.reactable.html` is generated.
+7)  Percent identity is calculated between each consensus and it's reference. `*consensus_to_refence.tsv`
+8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable (interactive table) with a visualization of read coverage `*.reactable.html` is generated.
 
 
 
