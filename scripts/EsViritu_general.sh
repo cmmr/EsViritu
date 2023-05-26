@@ -109,6 +109,9 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
 		echo "$$READS" | while read READ1 READ2 ; do
+			echo "$READS"
+			echo "$READ1"
+			echo "$READ2"
 			fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
 			minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
 			samtools collate -u -O - | \
