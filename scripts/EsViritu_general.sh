@@ -156,9 +156,9 @@ else
 	echo "Time Update: Concatenating input reads @ $MDYT"
 
 	if [ "$READ_FMT" == "paired" ] ; then
-		echo "$$READS" | while read READ1 READ2 ; do
-			seqfu interleave -1 $READ1 -2 $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
-		done
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+		seqfu interleave -1 $READ1 -2 $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	else
 		cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
