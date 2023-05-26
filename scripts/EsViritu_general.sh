@@ -130,7 +130,6 @@ elif [ "$QUAL" == "True" ] ; then
 	if [ "$READ_FMT" == "paired" ] ; then
 		READ1=$( echo $READS | cut -d " " -f1 )
 		READ2=$( echo $READS | cut -d " " -f2 )
-		seqfu interleave -1 $READ1 -2 $READ2 | \
 		fastp -i $READ1 -I $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html		
 	else
 		cat ${READS} | \

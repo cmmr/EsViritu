@@ -124,7 +124,12 @@ if is_tool("fastp") :
 else:
 	print ("fastp is not found. Exiting.")
 	quit()
-
+if is_tool("seqfu") :
+	print ("seqfu found")
+else:
+	print ("seqfu is not found. Exiting.")
+	quit()
+	
 subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
             str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
             str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
