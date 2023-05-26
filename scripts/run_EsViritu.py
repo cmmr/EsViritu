@@ -66,7 +66,7 @@ READS = ' '.join(map(str,args.READS))
 
 if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
     print(len(READS.split()), str(args.READ_FMT).lower(), "read files")
-else:
+elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
     print ("if stating --read_format paired, must provide exactly 2 read files")
     quit()
 

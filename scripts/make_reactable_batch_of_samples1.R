@@ -2,19 +2,19 @@
 
 ### makes a summary reactable for any number of samples (within reason) based on a summary info table + coverage table
 ### input summary files generated with: make_summary_batch_of_samples1.sh
-library(reactable)
-library(htmltools)
-library(dplyr)
-library(reactablefmtr)
-library(dataui)
-library(data.table)
-library(RColorBrewer)
-library(viridis)
-library(scales)
-library(knitr)
-library(readxl)
-library(lubridate)
-library(stringr)
+suppressMessages(library(reactable))
+suppressMessages(library(htmltools))
+suppressMessages(library(dplyr))
+suppressMessages(library(reactablefmtr))
+suppressMessages(library(dataui))
+suppressMessages(library(data.table))
+suppressMessages(library(RColorBrewer))
+suppressMessages(library(viridis))
+suppressMessages(library(scales))
+suppressMessages(library(knitr))
+suppressMessages(library(readxl))
+suppressMessages(library(lubridate))
+suppressMessages(library(stringr))
 
 args = commandArgs(trailingOnly=TRUE)
 
