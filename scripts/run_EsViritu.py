@@ -70,8 +70,7 @@ else:
     print ("if stating --read_format paired, must provide exactly 2 read files")
     quit()
 
-print("version")
-print(str(args.version))
+print("version ", str(ES_version))
 
 # check if R script with libraries returns good exit code
 completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
