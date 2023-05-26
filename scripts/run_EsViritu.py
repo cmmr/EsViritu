@@ -39,7 +39,7 @@ required_args.add_argument("-o", "--output_dir",
 
 optional_args = parser.add_argument_group(' OPTIONAL ARGUMENTS for EsViritu.')
 
-optional_args.add_argument('--version', action='version', version='v0.1.1')
+optional_args.add_argument('--version', action='version', version='v0.1.2')
 optional_args.add_argument('-q', "--qual", dest="QUAL", type=str2bool, default='False',
                            help='True or False. Remove low-quality reads with fastp?')
 optional_args.add_argument('-f', "--filter_seqs", dest="FILTER_SEQS", type=str2bool, default='False',
@@ -55,12 +55,23 @@ optional_args.add_argument("--temp",
 optional_args.add_argument("--keep", 
                            dest="KEEP", type=str2bool, default='False',
                            help='True of False. Keep the intermediate files, located in the temporary directory? These can add up, so it is not recommended if space is a concern.')
+optional_args.add_argument("-p", "--read_format", 
+                           dest="READ_FMT", type=str, default='unpaired',
+                           help='unpaired or paired. Format of input reads. If paired, must provide 2 files (R1, then R2) after -r argument.')
 
 args = parser.parse_args()
 
 READS = ' '.join(map(str,args.READS))
 
-#print(READS)
+
+if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
+    print(len(READS.split()), str(args.READ_FMT).lower(), "read files")
+else:
+    print ("if stating --read_format paired, must provide exactly 2 read files")
+    quit()
+
+print("version")
+print(str(args.version))
 
 # check if R script with libraries returns good exit code
 completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
@@ -118,4 +129,5 @@ else:
 subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
             str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
             str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
-            str(args.TEMP_DIR), str(args.KEEP), str(esviritu_script_path)])
+            str(args.TEMP_DIR), str(args.KEEP), str(args.READ_FMT).lower(), 
+            str(args.version), str(esviritu_script_path)])
