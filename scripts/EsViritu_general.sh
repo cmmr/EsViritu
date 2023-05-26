@@ -108,15 +108,13 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 	##trim
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
-		echo "$$READS" | while read READ1 READ2 ; do
-			echo "$READS"
-			echo "$READ1"
-			echo "$READ2"
-			fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-			minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
-			samtools collate -u -O - | \
-			samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
-		done
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+
+		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		samtools collate -u -O - | \
+		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
 	else
 		cat ${READS} | \
 		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
@@ -130,10 +128,10 @@ elif [ "$QUAL" == "True" ] ; then
 
 	##trim
 	if [ "$READ_FMT" == "paired" ] ; then
-		echo "$$READS" | while read READ1 READ2 ; do
-			seqfu interleave -1 $READ1 -2 $READ2 | \
-			fastp -i $READ1 -I $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html		
-		done
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+		seqfu interleave -1 $READ1 -2 $READ2 | \
+		fastp -i $READ1 -I $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html		
 	else
 		cat ${READS} | \
 		fastp --stdin -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html
