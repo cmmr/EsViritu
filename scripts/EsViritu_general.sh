@@ -88,6 +88,8 @@ echo "Keep temp files:            $KEEP" >> ${OUT_DIR}/record/${SAMPLE}.argument
 echo "Read format:                $READ_FMT" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "EsViritu Version:           $ES_VERSION" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "EsViritu script directory:  $ESVIRITU_DIR" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+echo "EsViritu DB version:        ${DB_DIR}/virus_pathogen_database.mmi" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+
 
 cat ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 
