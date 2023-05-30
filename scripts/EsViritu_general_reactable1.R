@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 
-library(reactable)
-library(htmltools)
-library(dplyr)
-library(reactablefmtr)
-library(dataui)
-library(data.table)
-library(RColorBrewer)
-library(viridis)
-library(scales)
-library(knitr)
+suppressMessages(library(reactable))
+suppressMessages(library(htmltools))
+suppressMessages(library(dplyr))
+suppressMessages(library(reactablefmtr))
+suppressMessages(library(dataui))
+suppressMessages(library(data.table))
+suppressMessages(library(RColorBrewer))
+suppressMessages(library(viridis))
+suppressMessages(library(scales))
+suppressMessages(library(knitr))
 
 args = commandArgs(trailingOnly=TRUE)
 

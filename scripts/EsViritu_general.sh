@@ -13,15 +13,18 @@ FILTER_SEQS=$6
 COMPARE=$7
 TEMP_DIR=$8
 KEEP=$9
-ESVIRITU_DIR=${10}
+READ_FMT=${10}
+ES_VERSION=${11}
+ESVIRITU_DIR=${12}
 
 MDYT=$( date +"%m-%d-%y---%T" )
 echo "Time Update: Starting main bash script for EsViritu General Mode @ $MDYT"
 
 #arguments check
-if [ $# -ne 10 ] ; then 
+if [ $# -ne 12 ] ; then 
 	echo "expected 10 arguments passed on the command line:"
-	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, compare consensus?, temp directory path, keep temp?, EsViritu script directory"
+	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, compare consensus?, "
+	echo "temp directory path, keep temp?, read format, version, EsViritu script directory"
 	echo "exiting"
 	exit
 fi
@@ -82,7 +85,11 @@ echo "Remove host/spikein seqs:   $FILTER_SEQS" >> ${OUT_DIR}/record/${SAMPLE}.a
 echo "Compare consensus to ref:   $COMPARE" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Temp directory path:        $TEMP_DIR" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Keep temp files:            $KEEP" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+echo "Read format:                $READ_FMT" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+echo "EsViritu Version:           $ES_VERSION" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "EsViritu script directory:  $ESVIRITU_DIR" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+echo "EsViritu DB version:        ${DB_DIR}/virus_pathogen_database.mmi" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+
 
 cat ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 
@@ -102,33 +109,61 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 
 	##trim
 	##filter
-	cat ${READS} | \
-	fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-	minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
-	samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	if [ "$READ_FMT" == "paired" ] ; then
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+
+		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		samtools collate -u -O - | \
+		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
+	else
+		cat ${READS} | \
+		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	fi
 
 elif [ "$QUAL" == "True" ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Trimming low quality reads with fastp @ $MDYT"
 
 	##trim
-	cat ${READS} | \
-	fastp --stdin -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html
+	if [ "$READ_FMT" == "paired" ] ; then
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq		
+	else
+		cat ${READS} | \
+		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.html > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	fi
 
 elif [ "$FILTER_SEQS" == "True" ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Aligning reads to filter_seqs.fna to remove host/spike-in @ $MDYT"
 
 	##filter
-	cat ${READS} | 
-	minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	if [ "$READ_FMT" == "paired" ] ; then
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		samtools collate -u -O - | \
+		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	else
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	fi
 
 else
 	## cat
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Concatenating input reads @ $MDYT"
 
-	cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	if [ "$READ_FMT" == "paired" ] ; then
+		READ1=$( echo $READS | cut -d " " -f1 )
+		READ2=$( echo $READS | cut -d " " -f2 )
+		seqfu interleave -1 $READ1 -2 $READ2 -o ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	else
+		cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
+	fi
 fi
 
 if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
@@ -139,7 +174,11 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running CoverM @ $MDYT"
 	
-	coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+	if [ "$READ_FMT" == "paired" ] ; then 
+		coverm contig --interleaved ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+	else
+		coverm contig --single ${TEMP_DIR}/${SAMPLE}.EV_input.fastq -r ${DB_DIR}/virus_pathogen_database.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+	fi
 
 	# Dereplicate hits from initial coverm
 	# Checking for contigs with 1000bp of coverage or 50% breadth of coverage
@@ -160,7 +199,7 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 
 		# pairwise comparison of consensus sequences
 		## blastn -ungapped. anicalc, aniclust 98%ANI, 20% AF
-		blastn -query ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -subject ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -num_threads $CPUS -ungapped
+		blastn -query ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -subject ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -ungapped
 
 		# calculate clusters of closely related sequences. Keep exemplars from each cluster
 		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
@@ -179,7 +218,12 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		samtools fastq -@ $CPUS ${TEMP_DIR}/virus_pathogen_database.mmi.${SAMPLE}.EV_input.fastq.bam > ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq
 
 		# run coverm with just previously aligned reads and dereplicated reference sequences
-		coverm contig --interleaved ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq -r ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+		if [ "$READ_FMT" == "paired" ] ; then 
+			coverm contig --interleaved ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq -r ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+		else
+			coverm contig --single ${TEMP_DIR}/${SAMPLE}.mapped_prelim.fastq -r ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi --minimap2-reference-is-index --min-read-percent-identity 90 --min-read-aligned-percent 90 -m length covered_bases count mean -o ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv -t $CPUS --bam-file-cache-directory ${TEMP_DIR} --discard-unmapped
+		fi
+		
 		FINAL_HITS=$( tail -n+2 ${TEMP_DIR}/${SAMPLE}.best.coverm.tsv | awk '{OFS=FS="\t"}{ if ($3>=1000 || ($3/$2)>=0.5) {print} }' | wc -l )
 
 		MDYT=$( date +"%m-%d-%y---%T" )

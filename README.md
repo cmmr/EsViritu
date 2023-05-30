@@ -132,31 +132,31 @@ Activate the conda environment:
 
 Individual samples can be run with the python script. E.g.:
 
-Basic run with 1 .fastq file:
+**Basic run with 1 .fastq file:**
 
 ```         
 python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
-Using multiple input .fastq files (`EsViritu` doesn't used paired-end info)
+**Using multiple input .fastq files (also, see paired end input below)**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
-To generate consensus vs reference comparison:
+**Using paired end input .fastq files. Must be exactly 2 files.**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -i True
+python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
 ```
 
-With pre-filtering steps:
+**With pre-filtering steps:**
 
 ```         
 python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
 ```
 
-Help menu
+**Help menu**
 
 ```         
 python /path/to/EsViritu/scripts/run_EsViritu.py -h

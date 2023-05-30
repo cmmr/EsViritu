@@ -32,3 +32,4 @@ dependencies:
   - r-lubridate
   - fastp[version='>=0.23.2']
   - r-stringr
+  - seqfu[version='>=1.17.1']
