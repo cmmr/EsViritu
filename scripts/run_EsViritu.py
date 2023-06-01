@@ -35,11 +35,11 @@ required_args.add_argument("-o", "--output_dir",
                            dest="OUTPUT_DIR", type=str, required=True, 
                            help='Output directory name. Will be created if it does not exist. Can be shared with other samples. No space characters, please. ')
 
-ES_version='v0.1.2'
+__version__='0.1.2'
 
 optional_args = parser.add_argument_group(' OPTIONAL ARGUMENTS for EsViritu.')
 
-optional_args.add_argument('--version', action='version', version='v0.1.2')
+optional_args.add_argument('--version', action='version', version=str(__version__))
 optional_args.add_argument('-q', "--qual", dest="QUAL", type=str2bool, default='False',
                            help='True or False. Remove low-quality reads with fastp?')
 optional_args.add_argument('-f', "--filter_seqs", dest="FILTER_SEQS", type=str2bool, default='False',
@@ -70,7 +70,7 @@ elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
     print ("if stating --read_format paired, must provide exactly 2 read files")
     quit()
 
-print("version ", str(ES_version))
+print("version ", str(__version__))
 
 # check if R script with libraries returns good exit code
 completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
@@ -134,4 +134,4 @@ subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh',
             str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
             str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
             str(args.TEMP_DIR), str(args.KEEP), str(args.READ_FMT).lower(), 
-            str(ES_version), str(esviritu_script_path)])
+            str(__version__), str(esviritu_script_path)])
