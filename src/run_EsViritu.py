@@ -14,7 +14,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
         
-pathname = os.path.dirname(sys.argv[0])  
+pathname = os.path.dirname(__file__)  
 esviritu_script_path = os.path.abspath(pathname)      
 print(esviritu_script_path) 
 
@@ -59,6 +59,9 @@ optional_args.add_argument("-p", "--read_format",
                            dest="READ_FMT", type=str, default='unpaired',
                            help='unpaired or paired. Format of input reads. If paired, must provide 2 files (R1, then R2) after -r argument.')
 
+optional_args.add_argument("--db", 
+                           dest="DB", type=str, default='default',
+                           help='path to sequence database. If not set, EsViritu looks for environmental variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src", "DBs"))
 args = parser.parse_args()
 
 READS = ' '.join(map(str,args.READS))
@@ -69,6 +72,13 @@ if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
 elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
     print ("if stating --read_format paired, must provide exactly 2 read files")
     quit()
+
+if args.DB == "default" & os.getenv('ESVIRITU_DB') != None:
+    args.DB = os.getenv('ESVIRITU_DB')
+else:
+	args.DB = esviritu_script_path.replace("src", "DBs")
+
+print("DB: ", str(args.DB))
 
 print("version ", str(__version__))
 
@@ -134,4 +144,4 @@ subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh',
             str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
             str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
             str(args.TEMP_DIR), str(args.KEEP), str(args.READ_FMT).lower(), 
-            str(__version__), str(esviritu_script_path)])
+            str(__version__), str(args.DB), str(esviritu_script_path)])

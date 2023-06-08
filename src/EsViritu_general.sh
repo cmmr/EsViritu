@@ -15,7 +15,8 @@ TEMP_DIR=$8
 KEEP=$9
 READ_FMT=${10}
 ES_VERSION=${11}
-ESVIRITU_DIR=${12}
+DB_DIR=${12}
+ESVIRITU_DIR=${13}
 
 MDYT=$( date +"%m-%d-%y---%T" )
 echo "Time Update: Starting main bash script for EsViritu General Mode @ $MDYT"
@@ -40,17 +41,16 @@ elif [ -d $TEMP_DIR ] ; then
 fi
 
 # check filter_seqs
-if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ]; then
+if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ]; then
 	echo "-f True flag requires that this file exists and is not empty: "
-	echo "${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna"
+	echo "${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna"
 	echo "exiting"
 	exit
 fi
 
-DB_DIR=$( find ${ESVIRITU_DIR%scripts}DBs/ -type d | tail -n1 )
 
 if [ ! -d ${DB_DIR} ] ; then
-	echo "can't find DB directory. should be a versioned directory here: ${ESVIRITU_DIR%scripts}DBs/ "
+	echo "can't find DB directory. should be a versioned directory here: ${ESVIRITU_DIR%src}DBs/ "
 	echo "exiting"
 	exit
 fi
@@ -114,13 +114,13 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 		READ2=$( echo $READS | cut -d " " -f2 )
 
 		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
 	else
 		cat ${READS} | \
 		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -144,11 +144,11 @@ elif [ "$FILTER_SEQS" == "True" ] ; then
 
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	else
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -202,8 +202,8 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		blastn -query ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -subject ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -ungapped
 
 		# calculate clusters of closely related sequences. Keep exemplars from each cluster
-		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
-		python ${ESVIRITU_DIR}/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
+		python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
+		python ${ESVIRITU_DIR}/utils/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
 		
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: Realigning reads to best references @ $MDYT"
