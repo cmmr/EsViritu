@@ -15,16 +15,17 @@ TEMP_DIR=$8
 KEEP=$9
 READ_FMT=${10}
 ES_VERSION=${11}
-ESVIRITU_DIR=${12}
+DB_DIR=${12}
+ESVIRITU_DIR=${13}
 
 MDYT=$( date +"%m-%d-%y---%T" )
 echo "Time Update: Starting main bash script for EsViritu General Mode @ $MDYT"
 
 #arguments check
-if [ $# -ne 12 ] ; then 
-	echo "expected 10 arguments passed on the command line:"
+if [ $# -ne 13 ] ; then 
+	echo "expected 13 arguments passed on the command line:"
 	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, compare consensus?, "
-	echo "temp directory path, keep temp?, read format, version, EsViritu script directory"
+	echo "temp directory path, keep temp?, read format, version, DB directory, EsViritu script directory"
 	echo "exiting"
 	exit
 fi
@@ -40,17 +41,16 @@ elif [ -d $TEMP_DIR ] ; then
 fi
 
 # check filter_seqs
-if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ]; then
+if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ]; then
 	echo "-f True flag requires that this file exists and is not empty: "
-	echo "${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna"
+	echo "${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna"
 	echo "exiting"
 	exit
 fi
 
-DB_DIR=$( find ${ESVIRITU_DIR%scripts}DBs/ -type d | tail -n1 )
 
 if [ ! -d ${DB_DIR} ] ; then
-	echo "can't find DB directory. should be a versioned directory here: ${ESVIRITU_DIR%scripts}DBs/ "
+	echo "can't find DB directory. should be a versioned directory here: ${DB_DIR}/ "
 	echo "exiting"
 	exit
 fi
@@ -103,6 +103,9 @@ for READ_FILE in $READS ; do
 	fi
 done
 
+
+### parsing paired/qual/pre-filt arguments and process reads accordingly
+
 if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Trimming low quality reads with fastp THEN Aligning reads to filter_seqs.fna to remove host/spike-in @ $MDYT"
@@ -114,13 +117,13 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 		READ2=$( echo $READS | cut -d " " -f2 )
 
 		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
 	else
 		cat ${READS} | \
 		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -144,11 +147,11 @@ elif [ "$FILTER_SEQS" == "True" ] ; then
 
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	else
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%scripts}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -165,6 +168,8 @@ else
 		cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 fi
+
+### main mapping/dereplicating/remapping part
 
 if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 	seqkit stats -T ${TEMP_DIR}/${SAMPLE}.EV_input.fastq > ${OUT_DIR}/${SAMPLE}.EV_input.seq_stats.tsv
@@ -202,8 +207,8 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		blastn -query ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -subject ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -ungapped
 
 		# calculate clusters of closely related sequences. Keep exemplars from each cluster
-		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
-		python ${ESVIRITU_DIR}/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
+		python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
+		python ${ESVIRITU_DIR}/utils/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
 		
 		MDYT=$( date +"%m-%d-%y---%T" )
 		echo "Time Update: Realigning reads to best references @ $MDYT"
@@ -259,6 +264,7 @@ else
 
 fi
 
+### calculate coverage across genome windows
 if [ -s ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.fna ] && [ -s ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam ] ; then
 
 	MDYT=$( date +"%m-%d-%y---%T" )
@@ -273,8 +279,9 @@ else
 	echo "Can't find .bam or .fna reference for coverage calculation"
 fi
 
+### run the R script that makes a reactable for each sequence passing the threshold
 if [ -s ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv ] && [ -s ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv ] ; then
-	# runs the R script that makes a reactable for each sequence passing the threshold
+	
 
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running reactablefmtr to make html table @ $MDYT"
@@ -295,7 +302,7 @@ if [ "$COMPARE" == "True" ] ; then
 		sed 's/NN//g' ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta | \
 		blastn -query - -subject ${DB_DIR}/virus_pathogen_database.fna -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv
 
-		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv
+		python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv
 
 		if [ -s ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ] ; then
 			Rscript ${ESVIRITU_DIR}/Consensuses_vs_Refs_comparison.R ${DB_DIR}/virus_pathogen_database.all_metadata.tsv ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ${OUT_DIR} ${SAMPLE}
@@ -310,7 +317,7 @@ if [ "$COMPARE" == "True" ] ; then
 	fi
 fi
 
-# delete temp
+### delete temp
 if [ "$KEEP" == "True" ] ; then
 	echo "Keeping temporary files in: ${TEMP_DIR}"
 else
