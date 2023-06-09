@@ -103,6 +103,9 @@ for READ_FILE in $READS ; do
 	fi
 done
 
+
+### parsing paired/qual/pre-filt arguments and process reads accordingly
+
 if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Trimming low quality reads with fastp THEN Aligning reads to filter_seqs.fna to remove host/spike-in @ $MDYT"
@@ -165,6 +168,8 @@ else
 		cat ${READS} > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 fi
+
+### main mapping/dereplicating/remapping part
 
 if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 	seqkit stats -T ${TEMP_DIR}/${SAMPLE}.EV_input.fastq > ${OUT_DIR}/${SAMPLE}.EV_input.seq_stats.tsv
@@ -259,6 +264,7 @@ else
 
 fi
 
+### calculate coverage across genome windows
 if [ -s ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.fna ] && [ -s ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi.${SAMPLE}.mapped_prelim.fastq.sort.bam ] ; then
 
 	MDYT=$( date +"%m-%d-%y---%T" )
@@ -273,8 +279,9 @@ else
 	echo "Can't find .bam or .fna reference for coverage calculation"
 fi
 
+### run the R script that makes a reactable for each sequence passing the threshold
 if [ -s ${OUT_DIR}/${SAMPLE}.100windows.mean_cov.tsv ] && [ -s ${OUT_DIR}/${SAMPLE}.detected_virus.info.tsv ] ; then
-	# runs the R script that makes a reactable for each sequence passing the threshold
+	
 
 	MDYT=$( date +"%m-%d-%y---%T" )
 	echo "Time Update: Running reactablefmtr to make html table @ $MDYT"
@@ -295,7 +302,7 @@ if [ "$COMPARE" == "True" ] ; then
 		sed 's/NN//g' ${OUT_DIR}/${SAMPLE}.final.consensus.with_NNs.fasta | \
 		blastn -query - -subject ${DB_DIR}/virus_pathogen_database.fna -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv
 
-		python ${ESVIRITU_DIR}/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv
+		python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv
 
 		if [ -s ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ] ; then
 			Rscript ${ESVIRITU_DIR}/Consensuses_vs_Refs_comparison.R ${DB_DIR}/virus_pathogen_database.all_metadata.tsv ${TEMP_DIR}/${SAMPLE}.consensus.remove_NNs.VS.refs.anicalc.tsv ${OUT_DIR} ${SAMPLE}
@@ -310,7 +317,7 @@ if [ "$COMPARE" == "True" ] ; then
 	fi
 fi
 
-# delete temp
+### delete temp
 if [ "$KEEP" == "True" ] ; then
 	echo "Keeping temporary files in: ${TEMP_DIR}"
 else
