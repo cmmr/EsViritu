@@ -137,31 +137,31 @@ Individual samples can be run with the python script. E.g.:
 **Basic run with 1 .fastq file:**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 **Using multiple input .fastq files (also, see paired end input below)**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 **Using paired end input .fastq files. Must be exactly 2 files.**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
+python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
 ```
 
 **With pre-filtering steps:**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
+python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
 ```
 
 **Help menu**
 
 ```         
-python /path/to/EsViritu/scripts/run_EsViritu.py -h
+python /path/to/EsViritu/src/run_EsViritu.py -h
 ```
 
 ## Make a Summary for Batch of Reports
@@ -177,7 +177,7 @@ Activate conda environment: `conda activate EsViritu`
 
 Then:
 ```         
-bash /path/to/EsViritu/scripts/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
+bash /path/to/EsViritu/src/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
 ```
 
 This command will generate the table `myproject_report_out.coverm.combined.tax.tsv` and the reactable `myproject_report_out.batch_detected_viruses.html` both of which summarize information about all the samples in the given directory.
