@@ -22,10 +22,10 @@ MDYT=$( date +"%m-%d-%y---%T" )
 echo "Time Update: Starting main bash script for EsViritu General Mode @ $MDYT"
 
 #arguments check
-if [ $# -ne 12 ] ; then 
-	echo "expected 10 arguments passed on the command line:"
+if [ $# -ne 13 ] ; then 
+	echo "expected 13 arguments passed on the command line:"
 	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, compare consensus?, "
-	echo "temp directory path, keep temp?, read format, version, EsViritu script directory"
+	echo "temp directory path, keep temp?, read format, version, DB directory, EsViritu script directory"
 	echo "exiting"
 	exit
 fi
