@@ -50,7 +50,7 @@ fi
 
 
 if [ ! -d ${DB_DIR} ] ; then
-	echo "can't find DB directory. should be a versioned directory here: ${ESVIRITU_DIR%src}DBs/ "
+	echo "can't find DB directory. should be a versioned directory here: ${DB_DIR}/ "
 	echo "exiting"
 	exit
 fi

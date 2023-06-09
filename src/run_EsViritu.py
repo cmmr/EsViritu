@@ -18,7 +18,9 @@ pathname = os.path.dirname(__file__)
 esviritu_script_path = os.path.abspath(pathname)      
 print(esviritu_script_path) 
 
-parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples. Version 0.1.1')
+__version__='0.2.0'
+
+parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples. Version ' + str(__version__))
 
 required_args = parser.add_argument_group(' REQUIRED ARGUMENTS for EsViritu ')
 
@@ -35,7 +37,7 @@ required_args.add_argument("-o", "--output_dir",
                            dest="OUTPUT_DIR", type=str, required=True, 
                            help='Output directory name. Will be created if it does not exist. Can be shared with other samples. No space characters, please. ')
 
-__version__='0.1.2'
+
 
 optional_args = parser.add_argument_group(' OPTIONAL ARGUMENTS for EsViritu.')
 
@@ -61,7 +63,7 @@ optional_args.add_argument("-p", "--read_format",
 
 optional_args.add_argument("--db", 
                            dest="DB", type=str, default='default',
-                           help='path to sequence database. If not set, EsViritu looks for environmental variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src", "DBs"))
+                           help='path to sequence database. If not set, EsViritu looks for environmental variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src", "DBs/v2.0.2"))
 args = parser.parse_args()
 
 READS = ' '.join(map(str,args.READS))
@@ -76,7 +78,7 @@ elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
 if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
     args.DB = os.getenv('ESVIRITU_DB')
 else:
-	args.DB = esviritu_script_path.replace("src", "DBs")
+	args.DB = esviritu_script_path.replace("src", "DBs/v2.0.2")
 
 print("DB: ", str(args.DB))
 
