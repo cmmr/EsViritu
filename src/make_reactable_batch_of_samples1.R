@@ -6,7 +6,7 @@ suppressMessages(library(reactable))
 suppressMessages(library(htmltools))
 suppressMessages(library(dplyr))
 suppressMessages(library(reactablefmtr))
-suppressMessages(library(dataui))
+#suppressMessages(library(dataui))
 suppressMessages(library(data.table))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(viridis))
@@ -62,54 +62,93 @@ combined_data <- subset(combined_data,
                                    "RPKMF", "reads_aligned", "genus", "species", 
                                    "subspecies", "coverage"))
 
-nice_table <- combined_data %>%
-  reactable(
-    .,
-    pagination = TRUE,
-    filterable = TRUE,
-    showPageSizeOptions = TRUE,
-    pageSizeOptions = c(10, 20, 100),
-    defaultPageSize = 10,
-    columns = list(
-      Percent_covered = colDef(
-        cell = data_bars(
-          data = .,
-          fill_color = viridis::magma(5, direction = -1),
-          background = '#F1F1F1',
-          min_value = 0,
-          max_value = 1,
-          round_edges = TRUE,
-          text_position = 'outside-end',
-          number_fmt = scales::percent
+## check for dataui
+is_dataui <- require(dataui)
+
+if (is_dataui == TRUE) {
+  suppressMessages(library(dataui))
+  
+  nice_table <- combined_data %>%
+    reactable(
+      .,
+      pagination = TRUE,
+      filterable = TRUE,
+      showPageSizeOptions = TRUE,
+      pageSizeOptions = c(10, 20, 100),
+      defaultPageSize = 10,
+      columns = list(
+        Percent_covered = colDef(
+          cell = data_bars(
+            data = .,
+            fill_color = viridis::magma(5, direction = -1),
+            background = '#F1F1F1',
+            min_value = 0,
+            max_value = 1,
+            round_edges = TRUE,
+            text_position = 'outside-end',
+            number_fmt = scales::percent
+          )
+        ),
+        RPKMF = colDef(
+          maxWidth = 100, 
+          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
+          format = colFormat(digits = 1)
+        ),
+        coverage = colDef(
+          filterable = FALSE,
+          width = 500,
+          cell = react_sparkline(
+            .,
+            height = 50,
+            decimals = 1,
+            show_area = TRUE,
+            area_color = "darkgreen",
+            line_curve = "cardinal",
+            highlight_points = highlight_points(max = "blue"),
+            labels = c("max"),
+            statline = "min",
+            statline_color = "black"
+            #bandline = "innerquartiles",
+            #bandline_color = "darkgreen"
+          )))) %>% 
+    add_title(sprintf("%s Batch Detected Virus Summary", args[3])) %>%
+    google_font(font_family = "Oswald")
+  
+} else {
+  nice_table <- combined_data %>%
+    select(-coverage) %>%
+    reactable(
+      .,
+      pagination = TRUE,
+      filterable = TRUE,
+      showPageSizeOptions = TRUE,
+      pageSizeOptions = c(10, 20, 100),
+      defaultPageSize = 10,
+      columns = list(
+        Percent_covered = colDef(
+          cell = data_bars(
+            data = .,
+            fill_color = viridis::magma(5, direction = -1),
+            background = '#F1F1F1',
+            min_value = 0,
+            max_value = 1,
+            round_edges = TRUE,
+            text_position = 'outside-end',
+            number_fmt = scales::percent
+          )
+        ),
+        RPKMF = colDef(
+          maxWidth = 100, 
+          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
+          format = colFormat(digits = 1)
         )
-      ),
-      RPKMF = colDef(
-        maxWidth = 100, 
-        style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
-        format = colFormat(digits = 1)
-      ),
-      coverage = colDef(
-        filterable = FALSE,
-        width = 500,
-        cell = react_sparkline(
-          .,
-          height = 50,
-          decimals = 1,
-          show_area = TRUE,
-          area_color = "darkgreen",
-          line_curve = "cardinal",
-          highlight_points = highlight_points(max = "blue"),
-          labels = c("max"),
-          statline = "min",
-          statline_color = "black"
-          #bandline = "innerquartiles",
-          #bandline_color = "darkgreen"
-        )))) %>% 
-  add_title(sprintf("%s Batch Detected Virus Summary", args[3])) %>%
-  google_font(font_family = "Oswald")
+      )) %>% 
+    add_title(sprintf("%s Batch Detected Virus Summary", args[3])) %>%
+    google_font(font_family = "Oswald")
+  
+}
 
 nice_table %>% save_reactable_test(sprintf("%s.batch_detected_viruses.html", args[3]))
 
-#write.table(genome_data, file = sprintf("%s.batch_detected_viruses.info.tsv", args[3]), quote = F, row.names = F, sep = "\t")
 
 
