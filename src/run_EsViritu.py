@@ -73,7 +73,7 @@ elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
     print ("if stating --read_format paired, must provide exactly 2 read files")
     quit()
 
-if args.DB == "default" & os.getenv('ESVIRITU_DB') != None:
+if str(args.DB) == "default" & os.getenv('ESVIRITU_DB') != None:
     args.DB = os.getenv('ESVIRITU_DB')
 else:
 	args.DB = esviritu_script_path.replace("src", "DBs")
