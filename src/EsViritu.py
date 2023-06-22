@@ -20,7 +20,7 @@ print(esviritu_script_path)
 
 __version__='0.2.1'
 
-def main():
+def EsViritu():
     parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples. Version ' + str(__version__))
 
     required_args = parser.add_argument_group(' REQUIRED ARGUMENTS for EsViritu ')

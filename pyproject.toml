@@ -28,7 +28,7 @@ where = ["src"]
 "EsViritu" = ["*.R", "*.sh"]
 
 [project.scripts]  
-EsViritu = "EsViritu:main"
+EsViritu = "EsViritu:EsViritu"
 
 [project.urls]
 "Homepage" = "https://github.com/cmmr/EsViritu"
