@@ -10,22 +10,23 @@ CPUS=$3
 OUT_DIR=$4
 QUAL=$5
 FILTER_SEQS=$6
-COMPARE=$7
-TEMP_DIR=$8
-KEEP=$9
-READ_FMT=${10}
-ES_VERSION=${11}
-DB_DIR=${12}
-ESVIRITU_DIR=${13}
+FILTER_LOC=$7
+COMPARE=$8
+TEMP_DIR=$9
+KEEP=${10}
+READ_FMT=${11}
+ES_VERSION=${12}
+DB_DIR=${13}
+ESVIRITU_DIR=${14}
 
 MDYT=$( date +"%m-%d-%y---%T" )
 echo "Time Update: Starting main bash script for EsViritu General Mode @ $MDYT"
 
 #arguments check
-if [ $# -ne 13 ] ; then 
-	echo "expected 13 arguments passed on the command line:"
-	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, compare consensus?, "
-	echo "temp directory path, keep temp?, read format, version, DB directory, EsViritu script directory"
+if [ $# -ne 14 ] ; then 
+	echo "expected 14 arguments passed on the command line:"
+	echo "read file(s), sample ID, CPUs, output directory, trim by quality?, filter seqs?, filter seqs directory, "
+	echo "compare consensus?, temp directory path, keep temp?, read format, version, DB directory, EsViritu script directory"
 	echo "exiting"
 	exit
 fi
@@ -41,9 +42,9 @@ elif [ -d $TEMP_DIR ] ; then
 fi
 
 # check filter_seqs
-if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ]; then
+if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${FILTER_LOC}/filter_seqs.fna ]; then
 	echo "-f True flag requires that this file exists and is not empty: "
-	echo "${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna"
+	echo "${FILTER_LOC}/filter_seqs.fna"
 	echo "exiting"
 	exit
 fi
@@ -82,6 +83,7 @@ echo "CPUs:                       $CPUS" >> ${OUT_DIR}/record/${SAMPLE}.argument
 echo "Output directory:           $OUT_DIR" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Trim for quality:           $QUAL" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Remove host/spikein seqs:   $FILTER_SEQS" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
+echo "filter seqs directory:      $FILTER_LOC" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Compare consensus to ref:   $COMPARE" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Temp directory path:        $TEMP_DIR" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
 echo "Keep temp files:            $KEEP" >> ${OUT_DIR}/record/${SAMPLE}.arguments.txt
@@ -117,13 +119,13 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 		READ2=$( echo $READS | cut -d " " -f2 )
 
 		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${FILTER_LOC}/filter_seqs.fna - | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
 	else
 		cat ${READS} | \
 		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${FILTER_LOC}/filter_seqs.fna - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -147,11 +149,11 @@ elif [ "$FILTER_SEQS" == "True" ] ; then
 
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${FILTER_LOC}/filter_seqs.fna ${READS} | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	else
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${FILTER_LOC}/filter_seqs.fna ${READS} | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 

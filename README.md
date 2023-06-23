@@ -61,7 +61,7 @@ then:
 
 7)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
 
-`cd EsViritu`
+`cd EsViritu` *or `cd` where you want the database to reside*
 
 `wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
 
@@ -75,6 +75,8 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 
 NOTE: If you had to download the database files outside of the `EsViritu` repo directory, remember to use `--db` flag when running the tool, or set the ESVIRITU_DB variable in the conda environment e.g.:
 
+8)  Set the database path:
+
 `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
 
 ## (OPTIONAL) Database for filtering out host reads and spike-ins
@@ -84,7 +86,7 @@ You could filter unwanted sequences out upstream of this tool, but this will all
 Here are instructions for downloading and formatting the human genome and phiX spike-in (3 GB decompressed).
 
 ```         
-cd EsViritu
+cd EsViritu ### or `cd` where you want the filter_seqs to reside
 mkdir filter_seqs && cd filter_seqs
 
 ## download phiX genome and gunzip
@@ -100,6 +102,9 @@ cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_gen
 
 ## optionally delete separate files
 rm GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna
+
+## set the filter_seqs directory as an environmental variable
+`conda env config vars set ESVIRITU_FILTER=/path/to/filter_seqs`
 ```
 
 Remember to set `-f True` to run the filtering step.
