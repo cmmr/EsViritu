@@ -41,9 +41,9 @@ elif [ -d $TEMP_DIR ] ; then
 fi
 
 # check filter_seqs
-if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ]; then
+if [ "$FILTER_SEQS" == "True" ] && [ ! -s ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ]; then
 	echo "-f True flag requires that this file exists and is not empty: "
-	echo "${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna"
+	echo "${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna"
 	echo "exiting"
 	exit
 fi
@@ -117,13 +117,13 @@ if [ "$QUAL" == "True" ] && [ "$FILTER_SEQS" == "True" ] ; then
 		READ2=$( echo $READS | cut -d " " -f2 )
 
 		fastp -i $READ1 -I $READ2 --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna - | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq			
 	else
 		cat ${READS} | \
 		fastp --stdin --stdout -w $CPUS -D 1 --html=${OUT_DIR}/record/${SAMPLE}.fastp.html --json=${OUT_DIR}/record/${SAMPLE}.fastp.json | \
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna - | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 
@@ -147,11 +147,11 @@ elif [ "$FILTER_SEQS" == "True" ] ; then
 
 	##filter
 	if [ "$READ_FMT" == "paired" ] ; then
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools collate -u -O - | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	else
-		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src}filter_seqs/filter_seqs.fna ${READS} | \
+		minimap2 -t $CPUS -ax sr ${ESVIRITU_DIR%src/Esviritu}filter_seqs/filter_seqs.fna ${READS} | \
 		samtools fastq -n -f 4 - > ${TEMP_DIR}/${SAMPLE}.EV_input.fastq
 	fi
 

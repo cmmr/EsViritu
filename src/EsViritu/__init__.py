@@ -64,7 +64,7 @@ def EsViritu():
 
     optional_args.add_argument("--db", 
                             dest="DB", type=str, default='default',
-                            help='path to sequence database. If not set, EsViritu looks for environmental variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src", "DBs/v2.0.2"))
+                            help='path to sequence database. If not set, EsViritu looks for environmental variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2"))
     args = parser.parse_args()
 
     READS = ' '.join(map(str,args.READS))
@@ -79,7 +79,7 @@ def EsViritu():
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')
     elif args.DB == "default":
-        args.DB = esviritu_script_path.replace("src", "DBs/v2.0.2")
+        args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
 
     print("DB: ", str(args.DB))
 
