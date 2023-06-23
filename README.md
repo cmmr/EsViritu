@@ -73,8 +73,6 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 
 `rm DB_v2.0.2.tar.gz`
 
-NOTE: If you had to download the database files outside of the `EsViritu` repo directory, remember to use `--db` flag when running the tool, or set the ESVIRITU_DB variable in the conda environment e.g.:
-
 8)  Set the database path:
 
 `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
@@ -104,7 +102,7 @@ cat GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_gen
 rm GCF_000819615.1_ViralProj14015_genomic.fna GCF_009914755.1_T2T-CHM13v2.0_genomic.fna
 
 ## set the filter_seqs directory as an environmental variable
-`conda env config vars set ESVIRITU_FILTER=/path/to/filter_seqs`
+conda env config vars set ESVIRITU_FILTER=/path/to/filter_seqs
 ```
 
 Remember to set `-f True` to run the filtering step.
