@@ -78,7 +78,7 @@ def EsViritu():
 
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')
-    else:
+    elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src", "DBs/v2.0.2")
 
     print("DB: ", str(args.DB))
