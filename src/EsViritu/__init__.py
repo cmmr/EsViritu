@@ -47,6 +47,9 @@ def EsViritu():
                             help='True or False. Remove low-quality reads with fastp?')
     optional_args.add_argument('-f', "--filter_seqs", dest="FILTER_SEQS", type=str2bool, default='False',
                             help='True or False. Remove reads aligning to sequences at filter_seqs/filter_seqs.fna ?')
+    optional_args.add_argument("--filter_dir", 
+                            dest="FILTER_DIR", type=str, default='default',
+                            help='path to directory of sequences to filter. If not set, EsViritu looks for environmental variable ESVIRITU_FILTER. Then, if this variable is unset, it this is unset, DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "filter_seqs"))
     optional_args.add_argument('-i', "--compare", dest="COMPARE", type=str2bool, default='True',
                             help='True or False. Calculate percent identity between sample consensus and reference sequences?')
     optional_args.add_argument("-m", "--mode", 
@@ -80,6 +83,11 @@ def EsViritu():
         args.DB = os.getenv('ESVIRITU_DB')
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
+
+    if args.FILTER_DIR == "default" and os.getenv('FILTER_DIR') != None:
+        args.FILTER_DIR = os.getenv('ESVIRITU_FILTER')
+    elif args.FILTER_DIR == "default":
+        args.FILTER_DIR = esviritu_script_path.replace("src/EsViritu", "filter_seqs")
 
     print("DB: ", str(args.DB))
 
@@ -145,6 +153,6 @@ def EsViritu():
         
     subprocess.call(['bash', str(esviritu_script_path) + '/EsViritu_general.sh', 
                 str(READS), str(args.SAMPLE), str(args.CPU), str(args.OUTPUT_DIR), 
-                str(args.QUAL), str(args.FILTER_SEQS), str(args.COMPARE), 
+                str(args.QUAL), str(args.FILTER_SEQS), str(args.FILTER_DIR), str(args.COMPARE), 
                 str(args.TEMP_DIR), str(args.KEEP), str(args.READ_FMT).lower(), 
                 str(__version__), str(args.DB), str(esviritu_script_path)])
