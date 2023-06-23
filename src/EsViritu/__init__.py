@@ -84,7 +84,7 @@ def EsViritu():
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
 
-    if args.FILTER_DIR == "default" and os.getenv('FILTER_DIR') != None:
+    if args.FILTER_DIR == "default" and os.getenv('ESVIRITU_FILTER') != None:
         args.FILTER_DIR = os.getenv('ESVIRITU_FILTER')
     elif args.FILTER_DIR == "default":
         args.FILTER_DIR = esviritu_script_path.replace("src/EsViritu", "filter_seqs")
