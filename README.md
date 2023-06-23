@@ -29,7 +29,7 @@ Virus genomes or segments are considered "detected" if:
 
 ## Installation
 
-**I have only tested this on Linux**
+**Only Installs on Linux**
 
 1)  Clone repo
 
@@ -47,7 +47,11 @@ Virus genomes or segments are considered "detected" if:
 
 `conda activate EsViritu`
 
-5)  Install the `R` package `dataui` manually in an R session
+5) Make it command-line executable. From repo directory:
+
+`pip install .`
+
+6) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
 
 `R`
 
@@ -55,7 +59,7 @@ then:
 
 `remotes::install_github("timelyportfolio/dataui")`
 
-6)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+7)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
 
 `cd EsViritu`
 
@@ -68,6 +72,10 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 `tar -xvf DB_v2.0.2.tar.gz`
 
 `rm DB_v2.0.2.tar.gz`
+
+NOTE: If you had to download the database files outside of the `EsViritu` repo directory, remember to use `--db` flag when running the tool, or set the ESVIRITU_DB variable in the conda environment e.g.:
+
+`conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
 
 ## (OPTIONAL) Database for filtering out host reads and spike-ins
 
@@ -137,31 +145,31 @@ Individual samples can be run with the python script. E.g.:
 **Basic run with 1 .fastq file:**
 
 ```         
-python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 **Using multiple input .fastq files (also, see paired end input below)**
 
 ```         
-python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+EsViritu -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
 ```
 
 **Using paired end input .fastq files. Must be exactly 2 files.**
 
 ```         
-python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
+EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
 ```
 
 **With pre-filtering steps:**
 
 ```         
-python /path/to/EsViritu/src/run_EsViritu.py -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
 ```
 
 **Help menu**
 
 ```         
-python /path/to/EsViritu/src/run_EsViritu.py -h
+EsViritu -h
 ```
 
 ## Make a Summary for Batch of Reports

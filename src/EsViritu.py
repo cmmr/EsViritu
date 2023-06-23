@@ -20,7 +20,7 @@ print(esviritu_script_path)
 
 __version__='0.2.1'
 
-def main():
+def EsViritu():
     parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples. Version ' + str(__version__))
 
     required_args = parser.add_argument_group(' REQUIRED ARGUMENTS for EsViritu ')
@@ -78,7 +78,7 @@ def main():
 
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')
-    else:
+    elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src", "DBs/v2.0.2")
 
     print("DB: ", str(args.DB))

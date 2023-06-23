@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "EsViritu"
+version = "0.2.1"
+authors = [
+  { name="Mike Tisza", email="michael.tisza@gmail.com" },
+]
+description = "Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples."
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",    
+    "biopython",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"EsViritu" = ["*.R", "*.sh"]
+
+[project.scripts]  
+EsViritu = "EsViritu:EsViritu"
+
+[project.urls]
+"Homepage" = "https://github.com/cmmr/EsViritu"
+"Bug Tracker" = "https://github.com/cmmr/EsViritu/issues"
