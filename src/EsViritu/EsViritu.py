@@ -18,7 +18,7 @@ pathname = os.path.dirname(__file__)
 esviritu_script_path = os.path.abspath(pathname)      
 print(esviritu_script_path) 
 
-__version__='0.2.1'
+__version__='0.2.2'
 
 def EsViritu():
     parser = argparse.ArgumentParser(description='EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic or clinical samples. Version ' + str(__version__))
