@@ -1,1 +1,1 @@
-from .EsViritu import EsViritu as EsViritu
+from .EsViritu import EsViritu
