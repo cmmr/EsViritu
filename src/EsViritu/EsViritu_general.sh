@@ -208,14 +208,25 @@ if [ -s ${TEMP_DIR}/${SAMPLE}.EV_input.fastq ] ; then
 		## blastn -ungapped. anicalc, aniclust 98%ANI, 20% AF
 		blastn -query ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -subject ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta -outfmt '6 std qlen slen' -max_target_seqs 10000 -out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -ungapped
 
-		# calculate clusters of closely related sequences. Keep exemplars from each cluster
-		python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
-		python ${ESVIRITU_DIR}/utils/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
+		# check if any alignments were to non-self sequences
+		DIFF_ALN=$( awk '{OFS=FS="\t"}{ if ($1 != $2) {print}}' ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv | wc -l )
+
+		if [ $DIFF_ALN -ge 1 ] ; then
+
+			# calculate clusters of closely related sequences. Keep exemplars from each cluster
+			python ${ESVIRITU_DIR}/utils/anicalc.py -i ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.blastn.tsv -o ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv
+			python ${ESVIRITU_DIR}/utils/aniclust.py --fna ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta --ani ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.anicalc.tsv --out ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv --min_ani 98 --min_tcov 20 --min_qcov 0
+			
+			MDYT=$( date +"%m-%d-%y---%T" )
+			echo "Time Update: Realigning reads to best references @ $MDYT"
+			# Generate fasta of just the exemplars (dereplicated) sequences. Make minimap index
+			cut -f1 ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv > ${TEMP_DIR}/${SAMPLE}.prelim.derep_accessions1.txt
+		else
+
+			#use refs corresponding to preliminary alignments
+			grep "^>" ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.fasta | sed 's/>//g' > ${TEMP_DIR}/${SAMPLE}.prelim.derep_accessions1.txt
+		fi
 		
-		MDYT=$( date +"%m-%d-%y---%T" )
-		echo "Time Update: Realigning reads to best references @ $MDYT"
-		# Generate fasta of just the exemplars (dereplicated) sequences. Make minimap index
-		cut -f1 ${TEMP_DIR}/${SAMPLE}.prelim.consensus.noNNs.aniclust.98ANI_20AF.tsv > ${TEMP_DIR}/${SAMPLE}.prelim.derep_accessions1.txt
 		seqkit grep -f ${TEMP_DIR}/${SAMPLE}.prelim.derep_accessions1.txt ${DB_DIR}/virus_pathogen_database.fna > ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.fna
 
 		minimap2 -d ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.mmi ${TEMP_DIR}/${SAMPLE}.best_ref_seqs.fna -t $CPUS

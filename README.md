@@ -38,13 +38,13 @@ Virus genomes or segments are considered "detected" if:
 
 1) Create conda environment (tested on `conda` v23.5.0)
 
-`conda create -n EsViritu -c conda-forge -c bioconda esviritu`
+`conda create -n EsViritu -c conda-forge -c bioconda esviritu biopython`
 
 2)  Activate the environment
 
 `conda activate EsViritu`
 
-#should be able to run help menu:#
+*should be able to run help menu:*
 
 `EsViritu -h`
 
