@@ -48,15 +48,7 @@ Virus genomes or segments are considered "detected" if:
 
 `EsViritu -h`
 
-3) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
-
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
-
-4)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+3)  Download the database (\~300 MB when decompressed).
 
 `cd EsViritu` *or `cd` where you want the database to reside*
 
@@ -72,9 +64,17 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 
 DB files should be in `DBs/v2.0.2`
 
-5)  Set the database path:
+4)  Set the database path:
 
 `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+
+5) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+
+`R`
+
+then:
+
+`remotes::install_github("timelyportfolio/dataui")`
 
 ### Developmental verision
 
@@ -98,15 +98,8 @@ DB files should be in `DBs/v2.0.2`
 
 `pip install .`
 
-6) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
 
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
-
-7)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+6)  Download the database (\~300 MB when decompressed).
 
 `cd EsViritu` *or `cd` where you want the database to reside*
 
@@ -122,9 +115,17 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 
 DB files should be in `DBs/v2.0.2`
 
-8)  Set the database path:
+7)  Set the database path:
 
 `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+
+8) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+
+`R`
+
+then:
+
+`remotes::install_github("timelyportfolio/dataui")`
 
 ## (OPTIONAL) Database for filtering out host reads and spike-ins
 
