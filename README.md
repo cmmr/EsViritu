@@ -1,5 +1,8 @@
 # EsViritu
 
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/downloads.svg)](https://anaconda.org/bioconda/esviritu)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/version.svg)](https://anaconda.org/bioconda/esviritu)
+
 Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples.
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus genomes with 90% ANI or greater to reference genomes.
@@ -30,6 +33,50 @@ Virus genomes or segments are considered "detected" if:
 ## Installation
 
 **Only Installs on Linux**
+
+### Stable release via Bionconda (recommended)
+
+1) Create conda environment (tested on `conda` v23.5.0)
+
+`conda create -n EsViritu -c conda-forge -c bioconda esviritu`
+
+2)  Activate the environment
+
+`conda activate EsViritu`
+
+#should be able to run help menu:#
+
+`EsViritu -h`
+
+3) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+
+`R`
+
+then:
+
+`remotes::install_github("timelyportfolio/dataui")`
+
+4)  Download the database in the `Esviritu` directory (\~300 MB when decompressed).
+
+`cd EsViritu` *or `cd` where you want the database to reside*
+
+`wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
+
+`md5sum DB_v2.0.2.tar.gz`
+
+should return `8e207e6a9465d7e40e948d7559b014c4`
+
+`tar -xvf DB_v2.0.2.tar.gz`
+
+`rm DB_v2.0.2.tar.gz`
+
+DB files should be in `DBs/v2.0.2`
+
+5)  Set the database path:
+
+`conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+
+### Developmental verision
 
 1)  Clone repo
 
@@ -72,6 +119,8 @@ should return `8e207e6a9465d7e40e948d7559b014c4`
 `tar -xvf DB_v2.0.2.tar.gz`
 
 `rm DB_v2.0.2.tar.gz`
+
+DB files should be in `DBs/v2.0.2`
 
 8)  Set the database path:
 
