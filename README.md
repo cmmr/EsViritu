@@ -1,12 +1,10 @@
 # EsViritu
 
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/downloads.svg)](https://anaconda.org/bioconda/esviritu)
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/version.svg)](https://anaconda.org/bioconda/esviritu)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/downloads.svg)](https://anaconda.org/bioconda/esviritu) [![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/version.svg)](https://anaconda.org/bioconda/esviritu)
 
 Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples.
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus genomes with 90% ANI or greater to reference genomes.
-
 
 NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of November 16th, 2022 (EsViritu DB v2.0.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
 
@@ -16,13 +14,13 @@ NOTE: The database used by `Esviritu` should cover all human and animal viruses 
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
-
 ## Interactive report of detected viruses
+
 ![Example](schematic/example_report_screengrab1.png)
 
 ## Threshold of detection
 
-Virus genomes or segments are considered "detected" if: 
+Virus genomes or segments are considered "detected" if:
 
 1)  at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
 
@@ -36,7 +34,7 @@ Virus genomes or segments are considered "detected" if:
 
 ### Stable release via Bionconda (recommended)
 
-1) Create conda environment (tested on `conda` v23.5.0)
+1)  Create conda environment (tested on `conda` v23.5.0)
 
 `conda create -n EsViritu -c conda-forge -c bioconda esviritu biopython`
 
@@ -68,7 +66,7 @@ DB files should be in `DBs/v2.0.2`
 
 `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
 
-5) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
 
 `R`
 
@@ -78,54 +76,79 @@ then:
 
 ### Developmental verision
 
-1)  Clone repo
+<details>
 
-`git clone https://github.com/cmmr/EsViritu.git`
+  <summary>Detailed Instructions</summary>
+  
+  1)  Clone repo
+  
+  `git clone https://github.com/cmmr/EsViritu.git`
+  
+  2)  Go to `EsViritu` directory.
+  
+  `cd EsViritu`
+  
+  3)  use the file `environment/EsViritu.yml` with `conda create` to generate the environment used with this tool
+  
+  `conda env create --file environment/EsViritu.yml`
+  
+  4)  Activate the environment
+  
+  `conda activate EsViritu`
+  
+  5)  Make it command-line executable. From repo directory:
+  
+  `pip install .`
+  
+  6)  Download the database (\~300 MB when decompressed).
+  
+  `cd EsViritu` *or `cd` where you want the database to reside*
+  
+  `wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
+  
+  `md5sum DB_v2.0.2.tar.gz`
+  
+  should return `8e207e6a9465d7e40e948d7559b014c4`
+  
+  `tar -xvf DB_v2.0.2.tar.gz`
+  
+  `rm DB_v2.0.2.tar.gz`
+  
+  DB files should be in `DBs/v2.0.2`
+  
+  7)  Set the database path:
+  
+  `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+  
+  8)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+  
+  `R`
+  
+  then:
+  
+  `remotes::install_github("timelyportfolio/dataui")`
 
-2)  Go to `EsViritu` directory.
+</details>
 
-`cd EsViritu`
+### Docker
 
-3)  use the file `environment/EsViritu.yml` with `conda create` to generate the environment used with this tool
+<details>
 
-`conda env create --file environment/EsViritu.yml`
+  <summary>Basic Instructions</summary>
+  
+  **Please note that, while I WAS able to get this to run using `Docker`/`Docker Desktop` on my Mac, I am not a `Docker` expert, and I may be unable to troubleshoot issues.**
+  
+  1)  Pull Docker image (v0.2.3 shown below)
+  
+  `docker pull quay.io/biocontainers/esviritu:0.2.3--pyhdfd78af_0`
+  
+  *Notes:* 
+  
+    * be sure to mount your volumes/directories with the `EsViritu` database as well as those with input read files 
+    
+    * I believe you can save environmental variables like ESVIRITU_DB in `Docker` containers
 
-4)  Activate the environment
-
-`conda activate EsViritu`
-
-5) Make it command-line executable. From repo directory:
-
-`pip install .`
-
-
-6)  Download the database (\~300 MB when decompressed).
-
-`cd EsViritu` *or `cd` where you want the database to reside*
-
-`wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
-
-`md5sum DB_v2.0.2.tar.gz`
-
-should return `8e207e6a9465d7e40e948d7559b014c4`
-
-`tar -xvf DB_v2.0.2.tar.gz`
-
-`rm DB_v2.0.2.tar.gz`
-
-DB files should be in `DBs/v2.0.2`
-
-7)  Set the database path:
-
-`conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
-
-8) (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
-
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
+</details>
 
 ## (OPTIONAL) Database for filtering out host reads and spike-ins
 
@@ -157,7 +180,6 @@ conda env config vars set ESVIRITU_FILTER=/path/to/filter_seqs
 
 Remember to set `-f True` to run the filtering step.
 
-
 ## Step-by-step Description of Pipeline
 
 -   inputs are .fastq files
@@ -170,8 +192,6 @@ Remember to set `-f True` to run the filtering step.
 6)  breadth, depth, and abundance of read coverage is determined for each detected genome/segment.
 7)  Percent identity is calculated between each consensus and it's reference. `*consensus_to_refence.tsv`
 8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable (interactive table) with a visualization of read coverage `*.reactable.html` is generated.
-
-
 
 # Running the tool
 
@@ -237,6 +257,7 @@ Example:
 Activate conda environment: `conda activate EsViritu`
 
 Then:
+
 ```         
 bash /path/to/EsViritu/src/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
 ```
@@ -245,7 +266,7 @@ This command will generate the table `myproject_report_out.coverm.combined.tax.t
 
 # Limitations and Considerations
 
-Because this tool is based on mapping to reference genomes, recombination and reassortment can cause some issues. 
+Because this tool is based on mapping to reference genomes, recombination and reassortment can cause some issues.
 
 For example, strains of picornaviruses naturally recombine with other strains. So, if the virus genome in your sample is a recombinant between the 5' half of "Picornavirus Strain A" and the 3' half of "Picornavirus Strain B", the output from `Esviritu` will indicate that you have both "Picornavirus Strain A" and "Picornavirus Strain B" in your sample. In these cases, it's useful to look at the html reports to analyze coverage across the genome(s).
 
@@ -255,7 +276,6 @@ RPKMF, the abundance metric used in `EsViritu` is:
 
 `(Reads Per Kilobase of reference genome)/(Million reads passing Filtering)`
 
-
 For the file `*consensus_seqs_vs_ref_seqs.tsv`, expect `percent_ANI` to be a bit low, as `samtools consensus` (used to generate consensus sequences) is used with conservative settings, so a relatively high number of "N"s may be encoded in the consensus sequence.
 
 # Citation
@@ -264,4 +284,4 @@ Comprehensive Wastewater Sequencing Reveals Community and Variant Dynamics of th
 
 Michael Tisza, Sara Javornik Cregeen, Vasanthi Avadhanula, Ping Zhang, Tulin Ayvaz, Karen Feliz, Kristi L. Hoffman, Justin R. Clark, Austen Terwilliger, Matthew C. Ross, Juwan Cormier, David Henke, Catherine Troisi, Fuqing Wu, Janelle Rios, Jennifer Deegan, Blake Hansen, John Balliew, Anna Gitter, Kehe Zhang, Runze Li, Cici X. Bauer, Kristina D. Mena, Pedro A. Piedra, Joseph F. Petrosino, Eric Boerwinkle, Anthony W. Maresso
 
-https://doi.org/10.1101/2023.05.03.23289441
+<https://doi.org/10.1101/2023.05.03.23289441>
