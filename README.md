@@ -259,7 +259,7 @@ Activate conda environment: `conda activate EsViritu`
 Then:
 
 ```         
-bash /path/to/EsViritu/src/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
+bash /path/to/EsViritu/src/EsViritu/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
 ```
 
 This command will generate the table `myproject_report_out.coverm.combined.tax.tsv` and the reactable `myproject_report_out.batch_detected_viruses.html` both of which summarize information about all the samples in the given directory.
