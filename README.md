@@ -50,7 +50,7 @@ Virus genomes or segments are considered "detected" if:
 
 `cd EsViritu` *or `cd` where you want the database to reside*
 
-`wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
+`wget https://zenodo.org/records/7876309/files/DB_v2.0.2.tar.gz`
 
 `md5sum DB_v2.0.2.tar.gz`
 
