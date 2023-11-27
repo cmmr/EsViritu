@@ -280,8 +280,9 @@ For the file `*consensus_seqs_vs_ref_seqs.tsv`, expect `percent_ANI` to be a bit
 
 # Citation
 
-Comprehensive Wastewater Sequencing Reveals Community and Variant Dynamics of the Collective Human Virome
+Wastewater sequencing reveals community and variant dynamics of the collective human virome
+
 
 Michael Tisza, Sara Javornik Cregeen, Vasanthi Avadhanula, Ping Zhang, Tulin Ayvaz, Karen Feliz, Kristi L. Hoffman, Justin R. Clark, Austen Terwilliger, Matthew C. Ross, Juwan Cormier, David Henke, Catherine Troisi, Fuqing Wu, Janelle Rios, Jennifer Deegan, Blake Hansen, John Balliew, Anna Gitter, Kehe Zhang, Runze Li, Cici X. Bauer, Kristina D. Mena, Pedro A. Piedra, Joseph F. Petrosino, Eric Boerwinkle, Anthony W. Maresso
 
-<https://doi.org/10.1101/2023.05.03.23289441>
+<https://doi.org/10.1038/s41467-023-42064-1>
