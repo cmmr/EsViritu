@@ -4,6 +4,7 @@ import logging
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
+from collections import defaultdict
 
 logger = logging.getLogger("esv_logger")
 
@@ -118,7 +119,9 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
 
 def minimap2_f(reference: str, 
                    reads: list, 
-                   cpus: str) -> pl.DataFrame:
+                   cpus: str,
+                   sample: str,
+                   tmpdir: str) -> pl.DataFrame:
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
     then filter low quality alignments
@@ -136,7 +139,6 @@ def minimap2_f(reference: str,
         *reads
         ]
 
-
     # Launch process, to stdout and catch it with pysam
     with subprocess.Popen(
         mini2_command,
@@ -148,33 +150,20 @@ def minimap2_f(reference: str,
     
         # read minimap2 output with pysam
 
-        filter_records = []
-
-
         with pysam.AlignmentFile(fd_child, 'r') as ministream:
-            for record in ministream:
-                readLength: int=record.infer_read_length()
-                alignLength: int=record.query_alignment_length
-                if record.is_paired:
-                    if record.is_read1:
-                        orient: str = "R1"
-                    else:
-                        orient: str = "R2"
-                else:
-                    orient: str = "N"
 
-                # fixes cases when the reads have .1 or .2 at the end
-                if record.query_name.endswith(".1")\
-                  or record.query_name.endswith(".2"):
-                    pairn: str = record.query_name[:-2]
-                else:
-                    pairn: str = record.query_name
+            outbf = os.path.join(tmpdir, f"{sample}.initial.filt.bam")
+            filtbam = pysam.AlignmentFile(outbf, "wb", template=ministream)
+
+            for record in ministream:
+                readLength: int = record.infer_read_length()
+                alignLength: int = record.query_alignment_length
 
                 # NM flag reports "edit distance" between read and ref
                 try:
                     alignEdit: int=dict(record.get_tags(with_value_type=False)).get('NM')
                 except:
-                    alignEdit: int=0
+                    alignEdit: int=100
                 try:
                     alignProp: float=alignLength/readLength
                 except:
@@ -187,36 +176,190 @@ def minimap2_f(reference: str,
 
                 if alignLength >= 100 and alignProp >= 0.9 and alignAcc >= 0.8:
 
-                    ### Instead of a polars dataframe, this should be a filtered .bam file
-                    ### ALLOW MULTIPLE ALIGNMENTS
-                    filter_records.append(
-                        [
-                            record.query_name,
-                            record.reference_name,
-                            readLength,
-                            alignProp,
-                            alignLength,
-                            alignAcc,
-                            orient,
-                            pairn
-                        ]
-                            )
-                    
-    filter_df = pl.DataFrame(filter_records,
-                            schema=['qname', 'rname', 
-                                    'read_length', 'aln_prop', 
-                                    'aln_len', 'aln_acc', 
-                                    'orientation', 'pair_name'],
-                            orient = "row")
-    
-    # return a polars dataframe
-    return filter_df
+                    filtbam.write(record)
+
+    filtbam.close()
+
+    # return an AlignmentFile
+    return filtbam
 
 # functions to add:
 ## take filtered .bam, make a coverm-like file
+def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
+    """
+    Takes a BAM file and sample name, sorts the BAM file, and generates a table with:
+    contig length, covered bases, read count, and mean coverage for each contig.
+    Returns a polars DataFrame.
+    """
+    # Sort the BAM file and index it
+    sorted_bam_path = bam_path.replace('.bam', '.sorted.bam')
+    pysam.sort('-o', sorted_bam_path, bam_path)
+    pysam.index(sorted_bam_path)
+
+    # Open the sorted BAM file
+    bamfile = pysam.AlignmentFile(sorted_bam_path, "rb")
+    
+    records = []
+    for contig in bamfile.header.references:
+        length = bamfile.header.get_reference_length(contig)
+        # Get coverage (depth) for each base in contig
+        # count_coverage returns a tuple of 4 arrays (A,C,G,T)
+        cov = bamfile.count_coverage(contig)
+        # Sum across all bases
+        total_cov = sum(cov)
+        # Per-base depth
+        per_base_coverage = [sum(bases) for bases in zip(*cov)]
+        covered_bases = sum(1 for d in per_base_coverage if d > 0)
+        mean_cov = sum(per_base_coverage) / length if length > 0 else 0
+        # Read count for contig
+        read_count = bamfile.count(contig=contig)
+        records.append({
+            "sample": sample,
+            "contig": contig,
+            "contig_length": length,
+            "covered_bases": covered_bases,
+            "read_count": read_count,
+            "mean_coverage": mean_cov
+        })
+    bamfile.close()
+    # Optionally remove temp sorted BAM files
+    # os.remove(sorted_bam_path)
+    # os.remove(sorted_bam_path + ".bai")
+    return pl.DataFrame(records)
+
 ## take filtered .bam, make preliminary consensus .fastas
+def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
+    """
+    Calls samtools consensus on the given BAM file and writes the consensus FASTA.
+    Only outputs consensus for records with aligned reads.
+    Returns the path to the consensus FASTA file.
+    """
+
+    if output_fasta is None:
+        output_fasta = bam_path.replace('.bam', '.consensus.fasta')
+    # samtools consensus command
+    cmd = [
+        'samtools', 'consensus',
+        '-o', output_fasta,
+        bam_path
+    ]
+    subprocess.run(cmd, check=True)
+    return output_fasta
+
 ## use minimap2 to compare preliminary consensus .fastas
+def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
+    """
+    Aligns a fasta file of long nucleotide sequences against itself using minimap2.
+    Returns a polars DataFrame with alignment stats: query, reference, percent identity, percent query covered, percent reference covered.
+    """
+    import subprocess
+    import polars as pl
+    from Bio import SeqIO
+    import tempfile
+    import os
+
+    # Best minimap2 settings for long nucleotide sequences: map-ont or asm20
+    # Use PAF output for easy parsing
+    paf_file = tempfile.NamedTemporaryFile(delete=False, suffix='.paf')
+    cmd = [
+        'minimap2',
+        '-cx', 'asm20',  # or 'map-ont', but asm20 is for assembly/long reads
+        '-t', str(threads),
+        fasta_path, fasta_path
+    ]
+    with open(paf_file.name, 'w') as outpaf:
+        subprocess.run(cmd, stdout=outpaf, check=True)
+
+    # PAF format columns:
+    # [0]query [1]qlen [2]qstart [3]qend [4]strand [5]target [6]tlen [7]tstart [8]tend [9]nmatch [10]alen [11]mapq ... tags
+
+    # Aggregate all alignments for each (qname, tname) pair
+    pair_records = defaultdict(list)
+    with open(paf_file.name) as f:
+        for line in f:
+            fields = line.strip().split('\t')
+            if len(fields) < 12:
+                continue
+            qname = fields[0]
+            qlen = int(fields[1])
+            qstart = int(fields[2])
+            qend = int(fields[3])
+            tname = fields[5]
+            tlen = int(fields[6])
+            tstart = int(fields[7])
+            tend = int(fields[8])
+            nmatch = int(fields[9])
+            alen = int(fields[10])
+            pair_records[(qname, tname)].append({
+                'qlen': qlen,
+                'qstart': qstart,
+                'qend': qend,
+                'tlen': tlen,
+                'tstart': tstart,
+                'tend': tend,
+                'nmatch': nmatch,
+                'alen': alen
+            })
+
+    # Summarize for each pair
+    summary_records = []
+    for (qname, tname), aligns in pair_records.items():
+        total_alen = sum(a['alen'] for a in aligns)
+        total_nmatch = sum(a['nmatch'] for a in aligns)
+        qlen = aligns[0]['qlen']
+        tlen = aligns[0]['tlen']
+        # Collect all covered query and target positions
+        q_covered = set()
+        t_covered = set()
+        for a in aligns:
+            q_covered.update(range(a['qstart'], a['qend']))
+            t_covered.update(range(a['tstart'], a['tend']))
+        # Calculate summary stats
+        pid = 100 * total_nmatch / total_alen if total_alen > 0 else 0
+        qcov = 100 * len(q_covered) / qlen if qlen > 0 else 0
+        tcov = 100 * len(t_covered) / tlen if tlen > 0 else 0
+        summary_records.append({
+            'qname': qname,
+            'tname': tname,
+            'pid': pid,
+            'qcov': qcov,
+            'tcov': tcov
+        })
+    os.remove(paf_file.name)
+    return pl.DataFrame(summary_records)
+
 ## use (updated?) anicalc and aniclust to cluster preliminary consensus .fastas
+def run_aniclust(
+    fna: str,
+    ani: str,
+    out: str,
+    exclude: str = None,
+    keep: str = None,
+    min_ani: float = 95,
+    min_qcov: float = 10,
+    min_tcov: float = 70,
+    min_length: int = 1
+) -> None:
+    """
+    Runs the aniclust.py script as a subprocess with the given arguments.
+    fna: path to nucleotide fasta
+    ani: path to tab-delimited file with [qname, tname, num_alns, ani, qcov, tcov]
+    out: output file path
+    exclude: (optional) path to ids to exclude
+    keep: (optional) path to ids to keep
+    min_ani, min_qcov, min_tcov, min_length: clustering thresholds
+    """
+    import subprocess
+    import sys
+    script_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
+    cmd = [sys.executable, script_path, '--fna', fna, '--ani', ani, '--out', out,
+           '--min_ani', str(min_ani), '--min_qcov', str(min_qcov), '--min_tcov', str(min_tcov), '--min_length', str(min_length)]
+    if exclude:
+        cmd += ['--exclude', exclude]
+    if keep:
+        cmd += ['--keep', keep]
+    subprocess.run(cmd, check=True)
+
 ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
 ## take final .bam, make final consensus .fastas
 ## Make "main" output table
