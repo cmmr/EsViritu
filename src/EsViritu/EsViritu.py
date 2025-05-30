@@ -5,9 +5,9 @@ from ntpath import isfile
 import sys, os
 import subprocess
 try:
-    from . import esv_funcs as esfv
+    from . import esv_funcs as esvf
 except:
-    import esv_funcs as esfv
+    import esv_funcs as esvf
 import yaml
 
 def esviritu():
@@ -205,7 +205,7 @@ def esviritu():
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
     
     for tool in tool_dep_list:
-        if not esfv.is_tool(tool):
+        if not esvf.is_tool(tool):
             logger.warning(f"{tool} is not found. Exiting.")
             sys.exit()
     
@@ -246,7 +246,7 @@ def esviritu():
     logger.info(trim_filt_reads)
 
     # map reads to virus DB and filter for good alignments
-    initial_map_bam = esfv.minimap2_f(
+    initial_map_bam = esvf.minimap2_f(
         db_index,
         args.DB,
         trim_filt_reads,
@@ -257,7 +257,7 @@ def esviritu():
 
     logger.info(initial_map_bam)
 
-    initial_consensus = esfv.bam_to_consensus_fasta(
+    initial_consensus = esvf.bam_to_consensus_fasta(
         initial_map_bam,
         os.path.join(
             args.TEMP_DIR,
