@@ -291,6 +291,42 @@ def esviritu():
 
     logger.info(initial_consensus)
 
+    # compare initial consensus seqs to each other
+    pairwise_initial_dt = esvf.minimap2_self_compare(
+        initial_consensus,
+        str(args.CPU)
+    )
+
+    anicalcf = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_mm_anicalc.tsv"
+        )
+    pairwise_initial_dt.write_csv(
+        file = anicalcf,
+        separator = "\t"
+    )
+    logger.info(anicalcf)
+
+    # Run aniclust.py
+    aniclustf = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_mm_aniclust.tsv"
+        )
+    aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
+    clustcmd = [
+        sys.executable, aniclustpy_path, 
+        '--fna', initial_consensus, 
+        '--ani', anicalcf, 
+        '--out', aniclustf,
+        '--min_ani', str(98), 
+        '--min_qcov', str(50), 
+        '--min_tcov', str(0), 
+        '--min_length', str(0)
+        ]
+    subprocess.run(clustcmd, check=True)
+
+    logger.info(aniclustf)
+
 
 if __name__ == "__main__":
     esviritu()
