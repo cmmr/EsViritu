@@ -215,7 +215,7 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         # count_coverage returns a tuple of 4 arrays (A,C,G,T)
         cov = bamfile.count_coverage(contig)
         # Sum across all bases
-        total_cov = sum(cov)
+        #total_cov = sum(cov)
         # Per-base depth
         per_base_coverage = [sum(bases) for bases in zip(*cov)]
         covered_bases = sum(1 for d in per_base_coverage if d > 0)
