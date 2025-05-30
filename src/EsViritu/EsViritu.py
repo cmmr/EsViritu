@@ -153,8 +153,13 @@ def esviritu():
     logger.propagate = False
     #########################
 
-    READS = ' '.join(map(str,args.READS))
+    if args.TEMP_DIR == "default":
+        args.TEMP_DIR == os.path.join(
+            args.OUTPUT_DIR,
+            f"{args.SAMPLE}_temp"
+        )
 
+    READS = ' '.join(map(str,args.READS))
 
     if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
         logger.info(len(READS.split()), str(args.READ_FMT).lower(), "read files")
@@ -237,8 +242,8 @@ def esviritu():
         args.READS,
         str(args.OUTPUT_DIR),
         str(args.TEMP_DIR),
-        str(args.QUAL),
-        str(args.FILTER_SEQS),
+        bool(args.QUAL),
+        bool(args.FILTER_SEQS),
         str(filter_db_fasta),
         str(args.READ_FMT),
         str(args.CPU),
@@ -249,7 +254,7 @@ def esviritu():
     # map reads to virus DB and filter for good alignments
     initial_map_bam = esvf.minimap2_f(
         db_index,
-        str(trim_filt_reads),
+        trim_filt_reads,
         str(args.CPU),
         str(args.SAMPLE),
         str(args.TEMP_DIR)
