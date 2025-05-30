@@ -125,12 +125,12 @@ def esviritu():
     #### define logger #####
     logger = logging.getLogger("esv_logger")
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    #formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
     # stream gets printed to terminal
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
+    #stream_handler.setFormatter(formatter)
 
     # file gets saved to a specified file
     log_file_path = os.path.join(
@@ -140,7 +140,7 @@ def esviritu():
     try:
         file_handler = logging.FileHandler(log_file_path)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(formatter)
+        #file_handler.setFormatter(formatter)
     except Exception as e:
         logger.error(f"Failed to create log file handler: {e}")
         file_handler = None
@@ -249,7 +249,6 @@ def esviritu():
     # map reads to virus DB and filter for good alignments
     initial_map_bam = esvf.minimap2_f(
         db_index,
-        args.DB,
         trim_filt_reads,
         args.CPU,
         args.SAMPLE,
