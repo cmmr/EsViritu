@@ -235,13 +235,13 @@ def esviritu():
 
     trim_filt_reads = esvf.trim_filter(
         args.READS,
-        args.OUTPUT_DIR,
-        args.TEMP_DIR,
-        args.QUAL,
-        args.FILTER_SEQS,
-        filter_db_fasta,
-        args.READ_FMT,
-        args.CPU,
+        str(args.OUTPUT_DIR),
+        str(args.TEMP_DIR),
+        str(args.QUAL),
+        str(args.FILTER_SEQS),
+        str(filter_db_fasta),
+        str(args.READ_FMT),
+        str(args.CPU),
     )
 
     logger.info(trim_filt_reads)
@@ -249,10 +249,10 @@ def esviritu():
     # map reads to virus DB and filter for good alignments
     initial_map_bam = esvf.minimap2_f(
         db_index,
-        trim_filt_reads,
-        args.CPU,
-        args.SAMPLE,
-        args.TEMP_DIR
+        str(trim_filt_reads),
+        str(args.CPU),
+        str(args.SAMPLE),
+        str(args.TEMP_DIR)
     )
 
     logger.info(initial_map_bam)
