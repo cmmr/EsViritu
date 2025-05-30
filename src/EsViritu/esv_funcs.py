@@ -186,7 +186,7 @@ def minimap2_f(reference: str,
     filtbam.close()
 
     # return an AlignmentFile
-    return filtbam
+    return outbf
 
 # functions to add:
 ## take filtered .bam, make a coverm-like file

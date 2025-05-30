@@ -153,11 +153,13 @@ def esviritu():
     logger.propagate = False
     #########################
 
-    if args.TEMP_DIR == "default":
+    if str(args.TEMP_DIR) == "default":
         args.TEMP_DIR == os.path.join(
             args.OUTPUT_DIR,
             f"{args.SAMPLE}_temp"
         )
+    
+    logger.info(args.TEMP_DIR)
 
     READS = ' '.join(map(str,args.READS))
 
