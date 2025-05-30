@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-from ntpath import isfile
 import sys, os
 import subprocess
 import yaml
