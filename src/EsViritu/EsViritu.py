@@ -9,6 +9,7 @@ try:
 except:
     import esv_funcs as esvf
 import yaml
+import logging
 
 def esviritu():
 

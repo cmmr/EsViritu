@@ -126,7 +126,7 @@ def minimap2_f(reference: str,
                    reads: list, 
                    cpus: str,
                    sample: str,
-                   tmpdir: str) -> pl.DataFrame:
+                   tmpdir: str) -> str:
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
     then filter low quality alignments
