@@ -4,12 +4,14 @@ import argparse
 from ntpath import isfile
 import sys, os
 import subprocess
+import yaml
+import logging
+import polars as pl
 try:
     from . import esv_funcs as esvf
 except:
     import esv_funcs as esvf
-import yaml
-import logging
+
 
 def esviritu():
 
@@ -154,7 +156,7 @@ def esviritu():
     #########################
 
     if str(args.TEMP_DIR) == "default":
-        args.TEMP_DIR == os.path.join(
+        args.TEMP_DIR = os.path.join(
             args.OUTPUT_DIR,
             f"{args.SAMPLE}_temp"
         )
@@ -264,6 +266,21 @@ def esviritu():
 
     logger.info(initial_map_bam)
 
+    # Make coverm-like table from initial bam
+    coverm_like_dt = esvf.bam_to_coverm_table(
+        initial_map_bam,
+        str(args.SAMPLE)
+    )
+
+    coverm_like_dt.write_csv(
+        file = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_initial_coverm.tsv"
+        ),
+        separator = "\t"
+    )
+
+    # make consensus .fasta from initial alignment
     initial_consensus = esvf.bam_to_consensus_fasta(
         initial_map_bam,
         os.path.join(

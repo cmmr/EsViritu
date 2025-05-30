@@ -185,24 +185,28 @@ def minimap2_f(reference: str,
 
     filtbam.close()
 
+    # make a sorted bam file
+
+    sorted_outbf = outbf.replace('.bam', '.sorted.bam')
+    pysam.sort("-o", sorted_outbf, outbf)
+
+    pysam.index(sorted_outbf)
+
     # return an AlignmentFile
-    return outbf
+    return sorted_outbf
 
 # functions to add:
 ## take filtered .bam, make a coverm-like file
 def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     """
-    Takes a BAM file and sample name, sorts the BAM file, and generates a table with:
+    Takes a sorted BAM file and sample name and generates a table with:
     contig length, covered bases, read count, and mean coverage for each contig.
     Returns a polars DataFrame.
     """
-    # Sort the BAM file and index it
-    sorted_bam_path = bam_path.replace('.bam', '.sorted.bam')
-    pysam.sort('-o', sorted_bam_path, bam_path)
-    pysam.index(sorted_bam_path)
+
 
     # Open the sorted BAM file
-    bamfile = pysam.AlignmentFile(sorted_bam_path, "rb")
+    bamfile = pysam.AlignmentFile(bam_path, "rb")
     
     records = []
     for contig in bamfile.header.references:
@@ -227,15 +231,13 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
             "mean_coverage": mean_cov
         })
     bamfile.close()
-    # Optionally remove temp sorted BAM files
-    # os.remove(sorted_bam_path)
-    # os.remove(sorted_bam_path + ".bai")
+
     return pl.DataFrame(records)
 
 ## take filtered .bam, make preliminary consensus .fastas
 def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     """
-    Calls samtools consensus on the given BAM file and writes the consensus FASTA.
+    Calls samtools consensus on the given sorted BAM file and writes the consensus FASTA.
     Only outputs consensus for records with aligned reads.
     Returns the path to the consensus FASTA file.
     """
