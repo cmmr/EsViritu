@@ -5,7 +5,7 @@ import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
 from collections import defaultdict
-
+from distutils.spawn import find_executable
 logger = logging.getLogger("esv_logger")
 
 
@@ -21,6 +21,11 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def is_tool(name):
+    """Check whether `name` is on PATH."""
+    
+    return find_executable(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, 
                 filter_db: str = None, paired: bool = False, threads: int = 4) -> list:
