@@ -10,7 +10,7 @@ except:
     import esv_funcs as esfv
 import yaml
 
-def EsViritu():
+def esviritu():
 
     pathname = os.path.dirname(__file__)  
     esviritu_script_path = os.path.abspath(pathname)      
@@ -267,5 +267,8 @@ def EsViritu():
 
     logger.info(initial_consensus)
 
+
+if __name__ == "__main__":
+    esviritu()
 
 
