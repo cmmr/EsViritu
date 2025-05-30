@@ -60,7 +60,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
     input_fastq = list(reads)
     # Step 1: Quality trim with fastp
     if trim:
-        if threads > 16:
+        if int(threads) > 16:
             fastp_threads = 16
         if paired:
             read1, read2 = reads

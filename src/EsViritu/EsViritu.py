@@ -57,12 +57,12 @@ def esviritu():
         )
     optional_args.add_argument(
         '-q', "--qual", dest="QUAL", 
-        type=esvf.str2bool, default='False',
+        type=esvf.str2bool, default=False,
         help='True or False. Remove low-quality reads with fastp?'
         )
     optional_args.add_argument(
         '-f', "--filter_seqs", 
-        dest="FILTER_SEQS", type=esvf.str2bool, default='False',
+        dest="FILTER_SEQS", type=esvf.str2bool, default=False,
         help='True or False. Remove reads aligning to sequences at filter_seqs/filter_seqs.fna ?'
         )
     optional_args.add_argument(
@@ -74,7 +74,7 @@ def esviritu():
             )
     optional_args.add_argument(
         '-i', "--compare", 
-        dest="COMPARE", type=esvf.str2bool, default='True',
+        dest="COMPARE", type=esvf.str2bool, default=True,
         help='True or False. Calculate percent identity between sample consensus and reference sequences?'
         )
     optional_args.add_argument(
@@ -89,7 +89,7 @@ def esviritu():
         )
     optional_args.add_argument(
         "--keep", 
-        dest="KEEP", type=esvf.str2bool, default='False',
+        dest="KEEP", type=esvf.str2bool, default=False,
         help='True of False. Keep the intermediate files, located in the temporary directory? \
             These can add up, so it is not recommended if space is a concern.'
         )
@@ -125,12 +125,12 @@ def esviritu():
     #### define logger #####
     logger = logging.getLogger("esv_logger")
     logger.setLevel(logging.DEBUG)
-    #formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
     # stream gets printed to terminal
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
-    #stream_handler.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
 
     # file gets saved to a specified file
     log_file_path = os.path.join(
@@ -140,7 +140,7 @@ def esviritu():
     try:
         file_handler = logging.FileHandler(log_file_path)
         file_handler.setLevel(logging.DEBUG)
-        #file_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
     except Exception as e:
         logger.error(f"Failed to create log file handler: {e}")
         file_handler = None
@@ -183,11 +183,11 @@ def esviritu():
         args.FILTER_DIR = esviritu_script_path.replace("src/EsViritu", "filter_seqs")
     
 
-    logger.info("DB: ", str(args.DB))
+    logger.info(f"DB: {str(args.DB)}")
 
-    logger.info("filter seqs: ", str(args.FILTER_DIR))
+    logger.info(f"filter seqs: {str(args.FILTER_DIR)}")
 
-    logger.info("version ", str(__version__))
+    logger.info(f"version {str(__version__)}")
 
     # check if R script with libraries returns good exit code
     completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
