@@ -371,5 +371,43 @@ def run_aniclust(
 ## take final .bam, make final consensus .fastas
 ## Make "main" output table
 ## recapitulate coverage table without bedtools
+
+def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
+    """
+    Splits each reference contig in a BAM file into 100 equal windows and reports the average read coverage of each window.
+    Returns a polars DataFrame with columns: contig, window_index, window_start, window_end, average_coverage
+    """
+
+    bam = pysam.AlignmentFile(bam_path, "rb")
+    records = []
+    for contig in bam.references:
+        contig_len = bam.get_reference_length(contig)
+        window_size = contig_len // 100
+        # If contig is shorter than 100bp, make window_size at least 1
+        window_size = max(1, window_size)
+        for i in range(100):
+            start = i * window_size
+            # Last window goes to end
+            end = contig_len if i == 99 else min((i + 1) * window_size, contig_len)
+            if start >= contig_len:
+                break
+            # Get coverage for this window
+            coverage = bam.count_coverage(contig, start=start, end=end)
+            # coverage is a tuple of 4 arrays (A, C, G, T); sum to get total coverage per base
+            total_cov = sum(coverage)
+            if len(total_cov) == 0:
+                avg_cov = 0.0
+            else:
+                avg_cov = float(sum(total_cov)) / (end - start) if (end - start) > 0 else 0.0
+            records.append({
+                "contig": contig,
+                "window_index": i,
+                "window_start": start,
+                "window_end": end,
+                "average_coverage": avg_cov
+            })
+    bam.close()
+    return pl.DataFrame(records)
+
 ## Compare consensus .fastas to reference .fastas
 ## Make reactable (or python-based version?)
