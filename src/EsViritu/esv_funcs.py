@@ -235,6 +235,7 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     return pl.DataFrame(records)
 
 ## take filtered .bam, make preliminary consensus .fastas
+### DOES IT MAKE SENSE TO REMOVE THE N's FROM THESE SEQUENCES?
 def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     """
     Calls samtools consensus on the given sorted BAM file and writes the consensus FASTA.
@@ -254,16 +255,12 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     return output_fasta
 
 ## use minimap2 to compare preliminary consensus .fastas
+### DO I NEED TO BIN/CONCATENATE ASSEMBLIES FIRST?
 def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
     """
     Aligns a fasta file of long nucleotide sequences against itself using minimap2.
     Returns a polars DataFrame with alignment stats: query, reference, percent identity, percent query covered, percent reference covered.
     """
-    import subprocess
-    import polars as pl
-    from Bio import SeqIO
-    import tempfile
-    import os
 
     # Best minimap2 settings for long nucleotide sequences: map-ont or asm20
     # Use PAF output for easy parsing
@@ -325,53 +322,115 @@ def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
         pid = 100 * total_nmatch / total_alen if total_alen > 0 else 0
         qcov = 100 * len(q_covered) / qlen if qlen > 0 else 0
         tcov = 100 * len(t_covered) / tlen if tlen > 0 else 0
+        num_alignments = len(aligns)
         summary_records.append({
             'qname': qname,
             'tname': tname,
             'pid': pid,
             'qcov': qcov,
-            'tcov': tcov
+            'tcov': tcov,
+            'num_alignments': num_alignments
         })
     os.remove(paf_file.name)
     return pl.DataFrame(summary_records)
 
-## use (updated?) anicalc and aniclust to cluster preliminary consensus .fastas
-def run_aniclust(
-    fna: str,
-    ani: str,
-    out: str,
-    exclude: str = None,
-    keep: str = None,
-    min_ani: float = 95,
-    min_qcov: float = 10,
-    min_tcov: float = 70,
-    min_length: int = 1
-) -> None:
+
+def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
     """
-    Runs the aniclust.py script as a subprocess with the given arguments.
-    fna: path to nucleotide fasta
-    ani: path to tab-delimited file with [qname, tname, num_alns, ani, qcov, tcov]
-    out: output file path
-    exclude: (optional) path to ids to exclude
-    keep: (optional) path to ids to keep
-    min_ani, min_qcov, min_tcov, min_length: clustering thresholds
+    Aligns a fasta file of long nucleotide sequences against itself using BLASTN.
+    Returns a polars DataFrame with alignment stats: query, subject, percent identity, percent query covered, percent subject covered, number of alignments.
     """
-    import subprocess
-    import sys
-    script_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
-    cmd = [sys.executable, script_path, '--fna', fna, '--ani', ani, '--out', out,
-           '--min_ani', str(min_ani), '--min_qcov', str(min_qcov), '--min_tcov', str(min_tcov), '--min_length', str(min_length)]
-    if exclude:
-        cmd += ['--exclude', exclude]
-    if keep:
-        cmd += ['--keep', keep]
-    subprocess.run(cmd, check=True)
+
+    # Create a temporary BLAST database
+    db_dir = tempfile.TemporaryDirectory()
+    db_prefix = os.path.join(db_dir.name, "blastdb")
+    makeblastdb_cmd = [
+        "makeblastdb",
+        "-in", fasta_path,
+        "-dbtype", "nucl",
+        "-out", db_prefix
+    ]
+    subprocess.run(makeblastdb_cmd, check=True)
+
+    # Run BLASTN all-vs-all
+    blast_out = tempfile.NamedTemporaryFile(delete=False, suffix='.blast.tsv')
+    blastn_cmd = [
+        "blastn",
+        "-query", fasta_path,
+        "-db", db_prefix,
+        "-outfmt", "6 qseqid qlen qstart qend sseqid slen sstart send pident length",
+        "-num_threads", str(threads),
+        "-out", blast_out.name
+    ]
+    subprocess.run(blastn_cmd, check=True)
+
+    # Parse BLAST output
+    pair_records = defaultdict(list)
+    with open(blast_out.name) as f:
+        for line in f:
+            fields = line.strip().split('\t')
+            if len(fields) < 10:
+                continue
+            qname = fields[0]
+            qlen = int(fields[1])
+            qstart = int(fields[2])
+            qend = int(fields[3])
+            sname = fields[4]
+            slen = int(fields[5])
+            sstart = int(fields[6])
+            send = int(fields[7])
+            pident = float(fields[8])
+            alen = int(fields[9])
+            pair_records[(qname, sname)].append({
+                'qlen': qlen,
+                'qstart': min(qstart, qend),
+                'qend': max(qstart, qend),
+                'slen': slen,
+                'sstart': min(sstart, send),
+                'send': max(sstart, send),
+                'nmatch': int(round(pident * alen / 100)),
+                'alen': alen,
+                'pident': pident
+            })
+
+    # Summarize for each pair
+    summary_records = []
+    for (qname, sname), aligns in pair_records.items():
+        total_alen = sum(a['alen'] for a in aligns)
+        total_nmatch = sum(a['nmatch'] for a in aligns)
+        qlen = aligns[0]['qlen']
+        slen = aligns[0]['slen']
+        # Collect all covered query and subject positions
+        q_covered = set()
+        s_covered = set()
+        for a in aligns:
+            q_covered.update(range(a['qstart'], a['qend']))
+            s_covered.update(range(a['sstart'], a['send']))
+        pid = 100 * total_nmatch / total_alen if total_alen > 0 else 0
+        qcov = 100 * len(q_covered) / qlen if qlen > 0 else 0
+        scov = 100 * len(s_covered) / slen if slen > 0 else 0
+        num_alignments = len(aligns)
+        summary_records.append({
+            'qname': qname,
+            'sname': sname,
+            'pid': pid,
+            'qcov': qcov,
+            'scov': scov,
+            'num_alignments': num_alignments
+        })
+    # Cleanup
+    blast_out.close()
+    os.remove(blast_out.name)
+    db_dir.cleanup()
+    return pl.DataFrame(summary_records)
+
+
 
 ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
 ## take final .bam, make final consensus .fastas
 ## Make "main" output table
-## recapitulate coverage table without bedtools
 
+## recapitulate coverage table without bedtools
 def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
     """
     Splits each reference contig in a BAM file into 100 equal windows and reports the average read coverage of each window.
