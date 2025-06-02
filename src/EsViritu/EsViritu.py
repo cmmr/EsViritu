@@ -185,6 +185,11 @@ def esviritu():
         logger.error(f'database file not found at {db_index}. exiting.')
         sys.exit()
 
+    db_fasta = os.path.join(args.DB, "virus_pathogen_database.fna")
+    if not os.path.isfile(db_fasta):
+        logger.error(f'database file not found at {db_fasta}. exiting.')
+        sys.exit()
+
     db_metadata = os.path.join(args.DB, "virus_pathogen_database.all_metadata.tsv")
     if not os.path.isfile(db_metadata):
         logger.error(f'database file not found at {db_metadata}. exiting.')
@@ -393,6 +398,7 @@ def esviritu():
     clust_db_fasta = esvf.final_record_getter(
         aniclust_bn_f,
         vir_meta_df,
+        db_fasta,
         os.path.join(
             str(args.TEMP_DIR),
             f"{str(args.SAMPLE)}_clustered_refs.fasta"
