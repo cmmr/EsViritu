@@ -173,7 +173,7 @@ def minimap2_f(reference: str,
                     alignProp: float=alignLength/readLength
                 except:
                     alignProp: float=0
-                ## assume the edit distance is between aligned part of read and ref
+                # assume the edit distance is between aligned part of read and ref
                 try:
                     alignAcc: float=(alignLength-alignEdit)/alignLength
                 except:
@@ -195,7 +195,6 @@ def minimap2_f(reference: str,
     # return an AlignmentFile
     return sorted_outbf
 
-# functions to add:
 ## take filtered .bam, make a coverm-like file
 def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     """
@@ -253,6 +252,64 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     ]
     subprocess.run(cmd, check=True)
     return output_fasta
+
+## (experimental) concatenate records from the same assembly
+
+def concat_asm_accessions(fasta_path: str, tsv_path: str, output_fasta: str = None) -> str:
+    """
+    Concatenate records from the same assembly in a fasta file based on a mapping tsv file.
+    - fasta_path: input fasta file
+    - tsv_path: tsv file with columns 'accession' and 'assembly'
+    - output_fasta: path to write concatenated fasta (if None, auto-generate)
+    Returns the path to the output fasta.
+    """
+
+    # Get accessions in fasta using seqkit
+    with tempfile.NamedTemporaryFile(delete=False, mode='w+', suffix='.txt') as acc_file:
+        seqkit_cmd = ["seqkit", "fx2tab", "-n", "i", fasta_path]
+        subprocess.run(seqkit_cmd, check=True, stdout=acc_file)
+        acc_file.flush()
+        acc_file.seek(0)
+        accessions = [line.strip() for line in acc_file.readlines() if line.strip()]
+    os.remove(acc_file.name)
+
+    # Load tsv as polars dataframe
+    df = pl.read_csv(tsv_path, separator='\t')
+    # Filter by accessions present in fasta
+    df = df.filter(df['accession'].is_in(accessions))
+
+    # Build assembly: [accession, ...] dictionary
+    asm_dict = {}
+    for row in df.iter_rows(named=True):
+        asm = row['assembly']
+        acc = row['accession']
+        asm_dict.setdefault(asm, []).append(acc)
+
+    # Prepare output
+    if output_fasta is None:
+        output_fasta = fasta_path.replace('.fasta', '.concat_asm.fasta')
+
+    with open(output_fasta, 'w') as out_f:
+        for asm, acc_list in asm_dict.items():
+            # Use seqkit to pull out all accessions for this assembly
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as accs_f:
+                accs_f.write('\n'.join(acc_list) + '\n')
+                accs_f.flush()
+                seqkit_cmd = ["seqkit", "grep", "-f", accs_f.name, fasta_path]
+                result = subprocess.run(seqkit_cmd, check=True, capture_output=True, text=True)
+            os.remove(accs_f.name)
+            # Concatenate sequences (remove headers, join seqs)
+            seqs = []
+            for line in result.stdout.splitlines():
+                if line.startswith('>'):
+                    continue
+                seqs.append(line.strip())
+            concat_seq = ''.join(seqs)
+            concat_seq = concat_seq.replace('NNN', '')
+            # Write new header: assembly [accession1 accession2 ...]
+            out_f.write(f">{asm} [{' '.join(acc_list)}]\n{concat_seq}\n")
+    return output_fasta
+
 
 ## use minimap2 to compare preliminary consensus .fastas
 ### DO I NEED TO BIN/CONCATENATE ASSEMBLIES FIRST?
@@ -332,7 +389,10 @@ def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
             'num_alignments': num_alignments
         })
     os.remove(paf_file.name)
-    return pl.DataFrame(summary_records)
+    df = pl.DataFrame(summary_records)
+    # Filter out self-alignments where qname == tname
+    df = df.filter(df['qname'] != df['tname'])
+    return df
 
 
 def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
@@ -422,7 +482,11 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
     blast_out.close()
     os.remove(blast_out.name)
     db_dir.cleanup()
-    return pl.DataFrame(summary_records)
+
+    df = pl.DataFrame(summary_records)
+    # Filter out self-alignments where qname == tname
+    df = df.filter(df['qname'] != df['tname'])
+    return df
 
 
 
