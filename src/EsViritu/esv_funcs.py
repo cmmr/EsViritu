@@ -303,7 +303,7 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
 
     # Get accessions in fasta using seqkit
     with tempfile.NamedTemporaryFile(delete=False, mode='w+', suffix='.txt') as acc_file:
-        seqkit_cmd = ["seqkit", "fx2tab", "-n", "i", fasta_path]
+        seqkit_cmd = ["seqkit", "fx2tab", "-n", "-i", fasta_path]
         subprocess.run(seqkit_cmd, check=True, stdout=acc_file)
         acc_file.flush()
         acc_file.seek(0)

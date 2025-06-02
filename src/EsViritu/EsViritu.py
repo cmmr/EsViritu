@@ -361,7 +361,7 @@ def esviritu():
 
     anicalc_bn_f = os.path.join(
             args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_mm_anicalc.tsv"
+            f"{str(args.SAMPLE)}_bn_anicalc.tsv"
         )
     pairwise_bn_initial_dt.write_csv(
         file = anicalc_bn_f,
@@ -372,7 +372,7 @@ def esviritu():
     # Run aniclust.py
     aniclust_bn_f = os.path.join(
             args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_mm_aniclust.tsv"
+            f"{str(args.SAMPLE)}_bn_aniclust.tsv"
         )
     aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
     clustcmd = [
@@ -410,7 +410,7 @@ def esviritu():
     )
 
     ## take final .bam, make final consensus .fastas
-    sec_con_f = os.join.path(
+    sec_con_f = os.path.join(
         str(args.OUTPUT_DIR),
         f"{str(args.SAMPLE)}_final_consensus.fasta"
     )
