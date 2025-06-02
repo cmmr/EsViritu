@@ -3,6 +3,7 @@ import pysam
 import logging
 import subprocess
 import json
+import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
 from collections import defaultdict
