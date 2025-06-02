@@ -260,7 +260,7 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         read_count = bamfile.count(contig=contig)
         records.append({
             "sample": sample,
-            "contig": contig,
+            "Accession": contig,
             "contig_length": length,
             "covered_bases": covered_bases,
             "read_count": read_count,
@@ -296,7 +296,7 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
     """
     Concatenate records from the same assembly in a fasta file based on a mapping DataFrame.
     - fasta_path: input fasta file
-    - df: polars DataFrame with columns 'accession' and 'assembly'
+    - df: polars DataFrame with columns 'Accession' and 'Assembly'
     - output_fasta: path to write concatenated fasta (if None, auto-generate)
     Returns the path to the output fasta.
     """
@@ -311,13 +311,13 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
     os.remove(acc_file.name)
 
     # Filter DataFrame by accessions present in fasta
-    df = df.filter(df['accession'].is_in(accessions))
+    df = df.filter(df['Accession'].is_in(accessions))
 
-    # Build assembly: [accession, ...] dictionary
+    # Build assembly: [Accession, ...] dictionary
     asm_dict = {}
     for row in df.iter_rows(named=True):
-        asm = row['assembly']
-        acc = row['accession']
+        asm = row['Assembly']
+        acc = row['Accession']
         asm_dict.setdefault(asm, []).append(acc)
 
     # Prepare output
@@ -530,7 +530,7 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
     Select final records based on aniclust clusters.
     Args:
         aniclust_tsv: path to aniclust output tsv file (first field is assembly)
-        vir_info_df: polars DataFrame with at least columns 'assembly' and 'accession'
+        vir_info_df: polars DataFrame with at least columns 'Assembly' and 'Accession'
         db_fasta: path to full fasta file
         output_fasta: path to write filtered fasta (optional)
     Returns:
@@ -545,9 +545,9 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
             if fields:
                 assemblies.add(fields[0])
     # Step 2: Get all rows from vir_info_df with those assemblies
-    filtered_df = vir_info_df.filter(pl.col('assembly').is_in(list(assemblies)))
+    filtered_df = vir_info_df.filter(pl.col('Assembly').is_in(list(assemblies)))
     # Step 3: Get unique accessions
-    unique_accessions = filtered_df['accession'].unique().to_list()
+    unique_accessions = filtered_df['Accession'].unique().to_list()
     # Step 4: Write accessions to temp file
     with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as acc_file:
         acc_file.write('\n'.join(unique_accessions) + '\n')
@@ -562,16 +562,16 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
 ## Make the main output table
 def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int) -> pl.DataFrame:
     """
-    Merge two polars DataFrames on 'accession' and add an 'RPKMF' column.
+    Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
     RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
     Args:
-        df1: polars DataFrame (must have 'accession', 'read_count', 'contig_length')
-        df2: polars DataFrame (must have 'accession' and any columns to merge)
+        df1: polars DataFrame (must have 'Accession', 'read_count', 'contig_length')
+        df2: polars DataFrame (must have 'Accession' and any columns to merge)
         filtered_reads: total filtered reads (int)
     Returns:
         Merged DataFrame with RPKMF column.
     """
-    merged = df1.join(df2, on="accession", how="inner")
+    merged = df1.join(df2, on="Accession", how="inner")
     merged = merged.with_columns([
         (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
     ])
