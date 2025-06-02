@@ -185,6 +185,11 @@ def esviritu():
         logger.error(f'database file not found at {db_index}. exiting.')
         sys.exit()
 
+    db_metadata = os.path.join(args.DB, "virus_pathogen_database.all_metadata.tsv")
+    if not os.path.isfile(db_metadata):
+        logger.error(f'database file not found at {db_metadata}. exiting.')
+        sys.exit()
+
     if args.FILTER_DIR == "default" and os.getenv('ESVIRITU_FILTER') != None:
         args.FILTER_DIR = os.getenv('ESVIRITU_FILTER')
     elif args.FILTER_DIR == "default":
@@ -220,9 +225,7 @@ def esviritu():
     
     # parameters to yaml
 
-    params_dict = vars(args).copy()  # Copy all argparse arguments
-    #params_dict['DB'] = args.DB
-    #params_dict['FILTER_DIR'] = args.FILTER_DIR
+    params_dict = vars(args).copy() 
     params_dict['version'] = str(__version__)
     params_dict['log_file'] = log_file_path
 
@@ -247,12 +250,22 @@ def esviritu():
         str(args.TEMP_DIR),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
+        str(args.SAMPLE),
         str(filter_db_fasta),
-        str(args.READ_FMT),
-        str(args.CPU),
+        bool(args.READ_FMT),
+        str(args.CPU)
     )
 
     logger.info(trim_filt_reads)
+
+    # get read stats for mapping pipeline
+    filtered_reads = esvf.fastp_stats(
+        trim_filt_reads,
+        str(args.OUTPUT_DIR),
+        str(args.SAMPLE),
+        bool(args.READ_FMT),
+        str(args.CPU)
+    )
 
     # map reads to virus DB and filter for good alignments
     initial_map_bam = esvf.minimap2_f(
@@ -266,18 +279,22 @@ def esviritu():
     logger.info(initial_map_bam)
 
     # Make coverm-like table from initial bam
-    coverm_like_dt = esvf.bam_to_coverm_table(
+    init_coverm_like_dt = esvf.bam_to_coverm_table(
         initial_map_bam,
         str(args.SAMPLE)
     )
 
-    coverm_like_dt.write_csv(
+    init_coverm_like_dt.write_csv(
         file = os.path.join(
             args.TEMP_DIR,
             f"{str(args.SAMPLE)}_initial_coverm.tsv"
         ),
         separator = "\t"
     )
+
+    # Load virus info metadata table in polars
+
+    vir_meta_df = pl.read_csv(db_metadata, separator='\t')
 
     # make consensus .fasta from initial alignment
     initial_consensus = esvf.bam_to_consensus_fasta(
@@ -290,33 +307,39 @@ def esviritu():
 
     logger.info(initial_consensus)
 
-    # compare initial consensus seqs to each other
-    pairwise_initial_dt = esvf.minimap2_self_compare(
+    init_assembly_concat = esvf.concat_asm_accessions(
         initial_consensus,
+        vir_meta_df
+    )
+
+    # compare initial consensus seqs to each other
+    ## minimap2 method
+    pairwise_mm_initial_dt = esvf.minimap2_self_compare(
+        init_assembly_concat,
         str(args.CPU)
     )
 
-    anicalcf = os.path.join(
+    anicalc_mm_f = os.path.join(
             args.TEMP_DIR,
             f"{str(args.SAMPLE)}_mm_anicalc.tsv"
         )
-    pairwise_initial_dt.write_csv(
-        file = anicalcf,
+    pairwise_mm_initial_dt.write_csv(
+        file = anicalc_mm_f,
         separator = "\t"
     )
-    logger.info(anicalcf)
+    logger.info(anicalc_mm_f)
 
     # Run aniclust.py
-    aniclustf = os.path.join(
+    aniclust_mm_f = os.path.join(
             args.TEMP_DIR,
             f"{str(args.SAMPLE)}_mm_aniclust.tsv"
         )
     aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
     clustcmd = [
         sys.executable, aniclustpy_path, 
-        '--fna', initial_consensus, 
-        '--ani', anicalcf, 
-        '--out', aniclustf,
+        '--fna', init_assembly_concat, 
+        '--ani', anicalc_mm_f, 
+        '--out', aniclust_mm_f,
         '--min_ani', str(98), 
         '--min_qcov', str(50), 
         '--min_tcov', str(0), 
@@ -324,7 +347,109 @@ def esviritu():
         ]
     subprocess.run(clustcmd, check=True)
 
-    logger.info(aniclustf)
+    logger.info(aniclust_mm_f)
+
+    ## blastn method
+    pairwise_bn_initial_dt = esvf.blastn_self_compare(
+        init_assembly_concat,
+        str(args.CPU)
+    )
+
+    anicalc_bn_f = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_mm_anicalc.tsv"
+        )
+    pairwise_bn_initial_dt.write_csv(
+        file = anicalc_bn_f,
+        separator = "\t"
+    )
+    logger.info(anicalc_mm_f)
+
+    # Run aniclust.py
+    aniclust_bn_f = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_mm_aniclust.tsv"
+        )
+    aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
+    clustcmd = [
+        sys.executable, aniclustpy_path, 
+        '--fna', init_assembly_concat, 
+        '--ani', anicalc_mm_f, 
+        '--out', aniclust_bn_f,
+        '--min_ani', str(98), 
+        '--min_qcov', str(50), 
+        '--min_tcov', str(0), 
+        '--min_length', str(0)
+        ]
+    subprocess.run(clustcmd, check=True)
+
+    logger.info(aniclust_bn_f)
+
+    ## make new fasta file from aniclust exemplars
+    clust_db_fasta = esvf.final_record_getter(
+        aniclust_bn_f,
+        vir_meta_df,
+        os.path.join(
+            str(args.TEMP_DIR),
+            f"{str(args.SAMPLE)}_clustered_refs.fasta"
+        )
+    )
+    logger.info(clust_db_fasta)
+
+    ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
+    second_map_bam = esvf.minimap2_f(
+        clust_db_fasta,
+        trim_filt_reads,
+        str(args.CPU),
+        str(args.SAMPLE),
+        str(args.TEMP_DIR)
+    )
+
+    ## take final .bam, make final consensus .fastas
+    sec_con_f = os.join.path(
+        str(args.OUTPUT_DIR),
+        f"{str(args.SAMPLE)}_final_consensus.fasta"
+    )
+    second_consensus_fasta = esvf.bam_to_consensus_fasta(
+        second_map_bam,
+        sec_con_f
+    )
+    logger.info(second_consensus_fasta)
+
+    # Make coverm-like table from final bam
+    second_coverm_like_dt = esvf.bam_to_coverm_table(
+        second_map_bam,
+        str(args.SAMPLE)
+    )
+
+    logger.info(second_coverm_like_dt)
+
+    second_coverm_like_dt.write_csv(
+        file = os.path.join(
+            args.TEMP_DIR,
+            f"{str(args.SAMPLE)}_final_coverm.tsv"
+        ),
+        separator = "\t"
+    )
+    ## Make "main" output table
+
+    main_out_df = esvf.main_table_maker(
+        second_coverm_like_dt,
+        vir_meta_df,
+        filtered_reads
+    )
+
+    main_of = os.path.join(
+        str(args.OUTPUT_DIR),
+        f"{str(args.SAMPLE)}.detected_virus.info.tsv"
+    )
+    main_out_df.write_csv(
+        file = main_of,
+        separator = "\t"
+    )
+
+    logger.info(main_of)
+
 
 
 if __name__ == "__main__":

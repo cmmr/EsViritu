@@ -2,11 +2,13 @@ import polars as pl
 import pysam
 import logging
 import subprocess
+import json
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
 from collections import defaultdict
 from distutils.spawn import find_executable
 logger = logging.getLogger("esv_logger")
+
 
 
 def str2bool(v):
@@ -27,7 +29,7 @@ def is_tool(name):
     
     return find_executable(name) is not None
 
-def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, 
+def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
                 filter_db: str = None, paired: bool = False, threads: int = 4) -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
@@ -43,25 +45,23 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
     Returns:
         str: path to output fastq file with processed reads.
     """
-    import os
-    import subprocess
-    import pysam
 
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(tempdir, exist_ok=True)
 
     # Set up file names
-    sample_name = os.path.basename(reads[0]).split('.')[0]
     trimmed_fastq = os.path.join(tempdir, f"{sample_name}.trimmed.fastq")
     filtered_fastq = os.path.join(tempdir, f"{sample_name}.filtered.fastq")
-    fastp_html = os.path.join(outdir, f"{sample_name}.fastp.html")
-    fastp_json = os.path.join(outdir, f"{sample_name}.fastp.json")
+    fastp_html = os.path.join(tempdir, f"{sample_name}.fastp.html")
+    fastp_json = os.path.join(tempdir, f"{sample_name}.fastp.json")
+
 
     input_fastq = list(reads)
+    if int(threads) > 16:
+        fastp_threads = 16
     # Step 1: Quality trim with fastp
     if trim:
-        if int(threads) > 16:
-            fastp_threads = 16
+
         if paired:
             read1, read2 = reads
             trimmed1 = os.path.join(tempdir, f"{sample_name}_R1.trimmed.fastq")
@@ -116,11 +116,47 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
 
         if paired:
             output_fastq = [unmapped_fastq1, unmapped_fastq2]
-        else:
-            output_fastq = [filtered_fastq]
         return output_fastq
     else:
         return input_fastq
+
+## fastp stats
+def fastp_stats(reads: list, outdir: str, sample_name: str, 
+                paired: bool = False, threads: int = 4) -> str:
+
+    pipeline_stats_fastp_html = os.path.join(outdir, f"{sample_name}.fastp.html")
+    pipeline_stats_fastp_json = os.path.join(outdir, f"{sample_name}.fastp.json")
+
+    if int(threads) > 16:
+        fastp_threads = 16
+
+    if paired:
+        read1, read2 = reads
+        fastp_stat_paired_cmd = [
+            "fastp", "-i", read1, "-I", read2,
+            "-w", str(fastp_threads), "--html", pipeline_stats_fastp_html, 
+            "--json", pipeline_stats_fastp_json
+        ]
+        subprocess.run(fastp_stat_paired_cmd, check=True)
+    else:
+        fastp_stat_single_cmd = [
+            "fastp", "-i", reads[0],
+            "-w", str(fastp_threads), "--html", pipeline_stats_fastp_html, 
+            "--json", pipeline_stats_fastp_json
+        ]
+        subprocess.run(fastp_stat_single_cmd, check=True)
+    
+    ## get total reads from fastp json
+    total_reads = None
+    try:
+        with open(pipeline_stats_fastp_json, "r") as f:
+            data = json.load(f)
+            total_reads = data["summary"]["before_filtering"]["total_reads"]
+    except Exception as e:
+        logging.warning(f"Could not parse total_reads from fastp JSON: {e}")
+    return total_reads
+
+
 
 def minimap2_f(reference: str, 
                    reads: list, 
@@ -255,11 +291,11 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
 
 ## (experimental) concatenate records from the same assembly
 
-def concat_asm_accessions(fasta_path: str, tsv_path: str, output_fasta: str = None) -> str:
+def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str = None) -> str:
     """
-    Concatenate records from the same assembly in a fasta file based on a mapping tsv file.
+    Concatenate records from the same assembly in a fasta file based on a mapping DataFrame.
     - fasta_path: input fasta file
-    - tsv_path: tsv file with columns 'accession' and 'assembly'
+    - df: polars DataFrame with columns 'accession' and 'assembly'
     - output_fasta: path to write concatenated fasta (if None, auto-generate)
     Returns the path to the output fasta.
     """
@@ -273,9 +309,7 @@ def concat_asm_accessions(fasta_path: str, tsv_path: str, output_fasta: str = No
         accessions = [line.strip() for line in acc_file.readlines() if line.strip()]
     os.remove(acc_file.name)
 
-    # Load tsv as polars dataframe
-    df = pl.read_csv(tsv_path, separator='\t')
-    # Filter by accessions present in fasta
+    # Filter DataFrame by accessions present in fasta
     df = df.filter(df['accession'].is_in(accessions))
 
     # Build assembly: [accession, ...] dictionary
@@ -312,7 +346,6 @@ def concat_asm_accessions(fasta_path: str, tsv_path: str, output_fasta: str = No
 
 
 ## use minimap2 to compare preliminary consensus .fastas
-### DO I NEED TO BIN/CONCATENATE ASSEMBLIES FIRST?
 def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
     """
     Aligns a fasta file of long nucleotide sequences against itself using minimap2.
@@ -489,10 +522,60 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
     return df
 
 
+## select final records based on aniclust
 
-## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
-## take final .bam, make final consensus .fastas
-## Make "main" output table
+def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: str, output_fasta: str) -> str:
+    """
+    Select final records based on aniclust clusters.
+    Args:
+        aniclust_tsv: path to aniclust output tsv file (first field is assembly)
+        vir_info_df: polars DataFrame with at least columns 'assembly' and 'accession'
+        db_fasta: path to full fasta file
+        output_fasta: path to write filtered fasta (optional)
+    Returns:
+        Path to new fasta file with selected accessions.
+    """
+
+    # Step 1: Get assemblies from aniclust tsv
+    assemblies = set()
+    with open(aniclust_tsv, 'r') as f:
+        for line in f:
+            fields = line.strip().split('\t')
+            if fields:
+                assemblies.add(fields[0])
+    # Step 2: Get all rows from vir_info_df with those assemblies
+    filtered_df = vir_info_df.filter(pl.col('assembly').is_in(list(assemblies)))
+    # Step 3: Get unique accessions
+    unique_accessions = filtered_df['accession'].unique().to_list()
+    # Step 4: Write accessions to temp file
+    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as acc_file:
+        acc_file.write('\n'.join(unique_accessions) + '\n')
+        acc_file.flush()
+        acc_file_path = acc_file.name
+    # Step 5: Run seqkit grep
+    seqkit_cmd = ["seqkit", "grep", "-f", acc_file_path, db_fasta, "-o", output_fasta]
+    subprocess.run(seqkit_cmd, check=True)
+    os.remove(acc_file_path)
+    return output_fasta
+
+## Make the main output table
+def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int) -> pl.DataFrame:
+    """
+    Merge two polars DataFrames on 'accession' and add an 'RPKMF' column.
+    RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
+    Args:
+        df1: polars DataFrame (must have 'accession', 'read_count', 'contig_length')
+        df2: polars DataFrame (must have 'accession' and any columns to merge)
+        filtered_reads: total filtered reads (int)
+    Returns:
+        Merged DataFrame with RPKMF column.
+    """
+    merged = df1.join(df2, on="accession", how="inner")
+    merged = merged.with_columns([
+        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
+    ])
+    return merged
+
 
 ## recapitulate coverage table without bedtools
 def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
