@@ -271,7 +271,6 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     return pl.DataFrame(records)
 
 ## take filtered .bam, make preliminary consensus .fastas
-### DOES IT MAKE SENSE TO REMOVE THE N's FROM THESE SEQUENCES?
 def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     """
     Calls samtools consensus on the given sorted BAM file and writes the consensus FASTA.
@@ -284,6 +283,8 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     # samtools consensus command
     cmd = [
         'samtools', 'consensus',
+        '-m', 'simple', 
+        '-q', '-c', '0.51',
         '-o', output_fasta,
         bam_path
     ]
@@ -291,7 +292,6 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     return output_fasta
 
 ## (experimental) concatenate records from the same assembly
-
 def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str = None) -> str:
     """
     Concatenate records from the same assembly in a fasta file based on a mapping DataFrame.
@@ -342,7 +342,9 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
             concat_seq = ''.join(seqs)
             concat_seq = concat_seq.replace('NNN', '')
             # Write new header: assembly [accession1 accession2 ...]
-            out_f.write(f">{asm} [{' '.join(acc_list)}]\n{concat_seq}\n")
+            # only keep seqs over 100 nt
+            if len(concat_seq) >= 100:
+                out_f.write(f">{asm} [{' '.join(acc_list)}]\n{concat_seq}\n")
     return output_fasta
 
 
@@ -519,7 +521,7 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
 
     df = pl.DataFrame(summary_records)
     # Filter out self-alignments where qname == tname
-    df = df.filter(df['qname'] != df['tname'])
+    df = df.filter(df['qname'] != df['sname'])
     return df
 
 
