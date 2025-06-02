@@ -294,7 +294,11 @@ def esviritu():
 
     # Load virus info metadata table in polars
 
-    vir_meta_df = pl.read_csv(db_metadata, separator='\t')
+    vir_meta_df = pl.read_csv(
+        db_metadata, 
+        separator='\t',
+        schema_overrides={"TaxID": pl.String}
+        )
 
     # make consensus .fasta from initial alignment
     initial_consensus = esvf.bam_to_consensus_fasta(
