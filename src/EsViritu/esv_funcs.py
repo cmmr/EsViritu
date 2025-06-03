@@ -562,7 +562,7 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
     return output_fasta
 
 ## Make the main output table
-def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int) -> pl.DataFrame:
+def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int, sample: str) -> pl.DataFrame:
     """
     Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
     RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
@@ -575,10 +575,60 @@ def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int) 
     """
     merged = df1.join(df2, on="Accession", how="inner")
     merged = merged.with_columns([
-        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
+        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
+        pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
+        pl.lit(sample).alias("sample_ID")
     ])
     return merged
 
+## Make the assembly-based output table
+def assembly_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int, sample: str) -> list(pl.DataFrame):
+    """
+    Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
+    RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
+    Args:
+        df1: polars DataFrame (must have 'Accession', 'read_count', 'contig_length')
+        df2: polars DataFrame (must have 'Accession' and any columns to merge)
+        filtered_reads: total filtered reads (int)
+        sample: sample_ID for run
+    Returns:
+        list of DataFrames, one summarized by accession, one by assembly.
+    """
+
+    # pare to necessary columns
+    df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage"])
+    merged = df1.join(df2, on="Accession", how="right")
+    # fill 0s
+    merged = merged.with_columns(
+        pl.col("read_count").fill_null(strategy="zero"),
+        pl.col("covered_bases").fill_null(strategy="zero"),
+        pl.col("mean_coverage").fill_null(strategy="zero")
+        )
+    # calculate/add more columns
+    merged = merged.with_columns([
+        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
+        pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
+        pl.lit(sample).alias("sample_ID")
+    ])
+    # Group/summarize by assembly (for segmented viruses)
+    assem_df = merged.group_by(
+        ["sample_ID", "filtered_reads_in_sample", "Assembly", 
+        "Asm_length", "kingdom", "phylum", "tclass", "order", 
+        "family", "genus", "species", "subspecies", "sample"] 
+    ).agg(
+        # read_count
+        pl.col("read_count").sum().alias("read_count"),
+        #covered_bases
+        pl.col("covered_bases").sum().alias("covered_bases"),
+        #Accessions
+        pl.col("Accession").flatten(),
+        #Segments
+        pl.col("Segment").flatten(),
+    ).with_columns(
+        (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
+    ).filter(pl.col("read_count") >= 1)
+
+    return merged, assem_df
 
 ## recapitulate coverage table without bedtools
 def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
@@ -601,13 +651,16 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
             if start >= contig_len:
                 break
             # Get coverage for this window
-            coverage = bam.count_coverage(contig, start=start, end=end)
+            coverage = bam.count_coverage(contig, start=start, end=end, read_callback = "all")
             # coverage is a tuple of 4 arrays (A, C, G, T); sum to get total coverage per base
-            total_cov = sum(coverage)
-            if len(total_cov) == 0:
+            # Per-base depth
+            per_base_coverage = [sum(bases) for bases in zip(*coverage)]
+            covered_bases = sum(1 for d in per_base_coverage if d > 0)
+            #total_cov = sum(coverage)
+            if len(covered_bases) == 0:
                 avg_cov = 0.0
             else:
-                avg_cov = float(sum(total_cov)) / (end - start) if (end - start) > 0 else 0.0
+                avg_cov = float(sum(per_base_coverage)) / (end - start) if (end - start) > 0 else 0.0
             records.append({
                 "Accession": contig,
                 "window_index": i,

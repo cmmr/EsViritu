@@ -451,10 +451,11 @@ def esviritu():
 
     ## Make "main" output table
 
-    main_out_df = esvf.main_table_maker(
+    main_out_df, assem_out_df = esvf.assembly_table_maker(
         second_coverm_like_dt,
         vir_meta_df,
-        filtered_reads
+        filtered_reads,
+        str(args.SAMPLE)
     )
 
     main_of = os.path.join(
@@ -468,6 +469,16 @@ def esviritu():
 
     logger.info(main_of)
 
+    assem_of = os.path.join(
+        str(args.OUTPUT_DIR),
+        f"{str(args.SAMPLE)}.detected_virus.assembly_summary.tsv"
+    )
+    assem_out_df.write_csv(
+        file = assem_of,
+        separator = "\t"
+    )
+
+    logger.info(main_of)
 
 
 if __name__ == "__main__":
