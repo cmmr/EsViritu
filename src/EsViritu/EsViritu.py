@@ -459,7 +459,7 @@ def esviritu():
     )
     logger.info(windows_cov_df)
 
-    ## Make "main" output table
+    ## Make "main" and "assembly" output table
 
     main_out_df, assem_out_df = esvf.assembly_table_maker(
         second_coverm_like_dt,
@@ -467,6 +467,11 @@ def esviritu():
         filtered_reads,
         str(args.SAMPLE)
     )
+    logger.info(main_out_df.schema)
+    logger.info(main_out_df)
+
+    logger.info(assem_out_df.schema)
+    logger.info(assem_out_df)
 
     main_of = os.path.join(
         str(args.OUTPUT_DIR),
@@ -481,14 +486,13 @@ def esviritu():
 
     assem_of = os.path.join(
         str(args.OUTPUT_DIR),
-        f"{str(args.SAMPLE)}.detected_virus.assembly_summary.tsv"
+        f"{str(args.SAMPLE)}.detected_virus.assembly_summary.json"
     )
-    assem_out_df.write_csv(
-        file = assem_of,
-        separator = "\t"
+    assem_out_df.write_json(
+        file = assem_of
     )
 
-    logger.info(main_of)
+    logger.info(assem_of)
 
 
 if __name__ == "__main__":
