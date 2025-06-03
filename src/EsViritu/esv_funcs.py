@@ -6,6 +6,7 @@ import json
 import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
+from typing import Tuple
 from collections import defaultdict
 from distutils.spawn import find_executable
 logger = logging.getLogger("esv_logger")
@@ -582,7 +583,9 @@ def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int, 
     return merged
 
 ## Make the assembly-based output table
-def assembly_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int, sample: str) -> list(pl.DataFrame):
+def assembly_table_maker(
+    df1: pl.DataFrame, df2: pl.DataFrame, 
+    filtered_reads: int, sample: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
     """
     Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
     RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
@@ -592,7 +595,7 @@ def assembly_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: i
         filtered_reads: total filtered reads (int)
         sample: sample_ID for run
     Returns:
-        list of DataFrames, one summarized by accession, one by assembly.
+        tuple of DataFrames, one summarized by accession, one by assembly.
     """
 
     # pare to necessary columns
