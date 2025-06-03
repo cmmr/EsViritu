@@ -679,5 +679,30 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
     bam.close()
     return pl.DataFrame(records)
 
+## Alternative, loose consensus func
+def pileup_consensus(): #### NEEDS TO BE FINISHED!!!
+    bamfile = pysam.AlignmentFile(bam_path, "rb")
+    reference = "MK139278.1"  # or your reference name
+
+    con_seq = []
+    for pileupcolumn in bamfile.pileup(reference, stepper="nofilter"):
+        base_counts = Counter()
+        #print("\ncoverage at base %s = %s" % (pileupcolumn.pos, pileupcolumn.get_query_names()))
+        for pileupread in pileupcolumn.pileups:
+            if not pileupread.is_del and not pileupread.is_refskip:
+                base = pileupread.alignment.query_sequence[pileupread.query_position]
+                base_counts[base] += 1
+                #print('\tbase in read %s = %s' %
+                #      (pileupread.alignment.query_name,
+                #       pileupread.alignment.query_sequence[pileupread.query_position]))
+        #print(f"Position {pileupcolumn.reference_pos + 1}: {dict(base_counts)}")
+        if base_counts: 
+            con_seq.append(max(base_counts, key=base_counts.get))
+        else:
+            con_seq.append("N")
+
+    print(f">{reference}")
+    print(''.join(con_seq))
+
 ## Compare consensus .fastas to reference .fastas
 ## Make reactable (or python-based version?)
