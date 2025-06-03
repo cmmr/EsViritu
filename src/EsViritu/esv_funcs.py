@@ -162,8 +162,8 @@ def fastp_stats(reads: list, outdir: str, sample_name: str,
 def minimap2_f(reference: str, 
                    reads: list, 
                    cpus: str,
-                   sample: str,
-                   tmpdir: str) -> str:
+                   sorted_outbf) -> str:
+
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
     then filter low quality alignments
@@ -194,7 +194,7 @@ def minimap2_f(reference: str,
 
         with pysam.AlignmentFile(fd_child, 'r') as ministream:
 
-            outbf = os.path.join(tmpdir, f"{sample}.initial.filt.bam")
+            outbf = sorted_outbf.replace('.sorted.bam', '.bam')
             filtbam = pysam.AlignmentFile(outbf, "wb", template=ministream)
 
             for record in ministream:
@@ -224,7 +224,6 @@ def minimap2_f(reference: str,
 
     # make a sorted bam file
 
-    sorted_outbf = outbf.replace('.bam', '.sorted.bam')
     pysam.sort("-o", sorted_outbf, outbf)
 
     pysam.index(sorted_outbf)
@@ -249,7 +248,7 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         length = bamfile.header.get_reference_length(contig)
         # Get coverage (depth) for each base in contig
         # count_coverage returns a tuple of 4 arrays (A,C,G,T)
-        cov = bamfile.count_coverage(contig, read_callback = "nofilter")
+        cov = bamfile.count_coverage(contig, read_callback = "all")
         # Sum across all bases
         #total_cov = sum(cov)
         # Per-base depth
@@ -258,14 +257,15 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         mean_cov = sum(per_base_coverage) / length if length > 0 else 0
         # Read count for contig
         read_count = bamfile.count(contig=contig)
-        records.append({
-            "sample": sample,
-            "Accession": contig,
-            "contig_length": length,
-            "covered_bases": covered_bases,
-            "read_count": read_count,
-            "mean_coverage": mean_cov
-        })
+        if read_count >= 1:
+            records.append({
+                "sample": sample,
+                "Accession": contig,
+                "contig_length": length,
+                "covered_bases": covered_bases,
+                "read_count": read_count,
+                "mean_coverage": mean_cov
+            })
     bamfile.close()
 
     return pl.DataFrame(records)
@@ -419,10 +419,10 @@ def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
         summary_records.append({
             'qname': qname,
             'tname': tname,
-            'pid': pid,
+            'num_alns': num_alignments,
+            'ani': pid,
             'qcov': qcov,
-            'tcov': tcov,
-            'num_alignments': num_alignments
+            'tcov': tcov
         })
     os.remove(paf_file.name)
     df = pl.DataFrame(summary_records)
@@ -504,15 +504,15 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
             s_covered.update(range(a['sstart'], a['send']))
         pid = 100 * total_nmatch / total_alen if total_alen > 0 else 0
         qcov = 100 * len(q_covered) / qlen if qlen > 0 else 0
-        scov = 100 * len(s_covered) / slen if slen > 0 else 0
+        tcov = 100 * len(s_covered) / slen if slen > 0 else 0
         num_alignments = len(aligns)
         summary_records.append({
             'qname': qname,
-            'sname': sname,
-            'pid': pid,
+            'tname': sname,
+            'num_alns': num_alignments,
+            'ani': pid,
             'qcov': qcov,
-            'scov': scov,
-            'num_alignments': num_alignments
+            'tcov': tcov
         })
     # Cleanup
     blast_out.close()
@@ -521,7 +521,7 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
 
     df = pl.DataFrame(summary_records)
     # Filter out self-alignments where qname == tname
-    df = df.filter(df['qname'] != df['sname'])
+    df = df.filter(df['qname'] != df['tname'])
     return df
 
 
@@ -609,7 +609,7 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
             else:
                 avg_cov = float(sum(total_cov)) / (end - start) if (end - start) > 0 else 0.0
             records.append({
-                "contig": contig,
+                "Accession": contig,
                 "window_index": i,
                 "window_start": start,
                 "window_end": end,
@@ -619,4 +619,131 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
     return pl.DataFrame(records)
 
 ## Compare consensus .fastas to reference .fastas
-## Make reactable (or python-based version?)
+## Dash/Plotly interactive table with sparklines
+
+def make_interactive_coverage_table(windows_df, main_df, output_html="coverage_table.html"):
+    """
+    Create an interactive HTML table using Dash and Plotly. The table includes columns for Accession, RPKMF, species, and a sparkline of the coverage profile.
+    Args:
+        windows_df: DataFrame with columns [Accession, window_index, average_coverage, ...]
+        main_df: DataFrame with columns [Accession, RPKMF, species, ...]
+        output_html: Path to save the resulting HTML file
+    Returns:
+        None (writes HTML file)
+    """
+    import numpy as np
+    import pandas as pd
+    import dash
+    from dash import dash_table, html
+    import plotly.graph_objs as go
+    from dash.dash_table.Format import Format, Scheme
+    from dash.dependencies import Input, Output
+    import dash_core_components as dcc
+    import math
+    import tempfile
+
+    # Convert polars DataFrames to pandas if needed
+    if hasattr(windows_df, "to_pandas"):
+        windows_df = windows_df.to_pandas()
+    if hasattr(main_df, "to_pandas"):
+        main_df = main_df.to_pandas()
+
+    # Step 1: Group by Accession, round up average_coverage, and collect as list
+    cov_summary = (
+        windows_df
+        .assign(average_coverage=lambda df: np.ceil(df["average_coverage"]).astype(int))
+        .groupby("Accession")
+        .agg({"average_coverage": lambda x: list(x)})
+        .reset_index()
+    )
+
+    # Step 2: Join with main_df on Accession
+    merged = pd.merge(main_df, cov_summary, on="Accession", how="inner")
+
+    # Step 3: Build Dash app with table and sparklines
+    def sparkline(values):
+        fig = go.Figure(
+            data=[go.Scatter(y=values, mode="lines", line=dict(color="#2a9d8f", width=2))],
+            layout=go.Layout(
+                margin=dict(l=0, r=0, t=0, b=0),
+                height=40,
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                plot_bgcolor="white",
+                paper_bgcolor="white"
+            )
+        )
+        fig.update_layout(
+            autosize=True,
+            height=40,
+            width=160
+        )
+        return fig
+
+    # Prepare data for table
+    table_data = []
+    for _, row in merged.iterrows():
+        table_data.append({
+            "Accession": row["Accession"],
+            "RPKMF": row["RPKMF"],
+            "species": row.get("species", ""),
+            "coverage_spark": row["average_coverage"]
+        })
+
+    # Dash app
+    app = dash.Dash(__name__)
+    app.layout = html.Div([
+        dash_table.DataTable(
+            id="coverage-table",
+            columns=[
+                {"name": "Accession", "id": "Accession"},
+                {"name": "RPKMF", "id": "RPKMF", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
+                {"name": "species", "id": "species"},
+                {"name": "Coverage Profile", "id": "coverage_spark", "presentation": "markdown"},
+            ],
+            data=[{
+                "Accession": d["Accession"],
+                "RPKMF": d["RPKMF"],
+                "species": d["species"],
+                # Insert a markdown image for the sparkline
+                "coverage_spark": f'![](data:image/png;base64,{{{{SPARK_{d["Accession"]}}}}})'
+            } for d in table_data],
+            style_cell={"fontFamily": "monospace", "fontSize": 14, "textAlign": "left"},
+            style_table={"overflowX": "auto"},
+            markdown_options={"html": True},
+        ),
+        html.Div(id="sparkline-images", style={"display": "none"})
+    ])
+
+    # Generate sparkline images as base64
+    import base64
+    import io
+    sparkline_map = {}
+    for d in table_data:
+        fig = sparkline(d["coverage_spark"])
+        buf = io.BytesIO()
+        fig.write_image(buf, format="png")
+        buf.seek(0)
+        img_b64 = base64.b64encode(buf.read()).decode("utf-8")
+        sparkline_map[d["Accession"]] = img_b64
+
+    # Replace placeholders with actual images in the table
+    app.layout.children[0].data = [
+        {
+            **row,
+            "coverage_spark": row["coverage_spark"].replace(
+                f"{{{{SPARK_{row['Accession']}}}}}", sparkline_map[row["Accession"]]
+            )
+        } for row in app.layout.children[0].data
+    ]
+
+    # Save to HTML
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_html:
+        app.run_server(debug=False, port=8050, use_reloader=False)
+        # The Dash server will serve the app, but to save as HTML, you would need dash's snapshot tools or selenium.
+        # For now, instruct the user to open localhost:8050 to view interactively.
+        print(f"Dash app running at http://127.0.0.1:8050. Please open in your browser.")
+        print("To export as static HTML, use a browser to save the page.")
+
+    # Optionally, return the merged DataFrame for further use
+    return merged

@@ -273,12 +273,12 @@ def esviritu():
     )
 
     # map reads to virus DB and filter for good alignments
+    init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")
     initial_map_bam = esvf.minimap2_f(
         db_index,
         trim_filt_reads,
         str(args.CPU),
-        str(args.SAMPLE),
-        str(args.TEMP_DIR)
+        init_bam_f
     )
 
     logger.info(initial_map_bam)
@@ -407,12 +407,13 @@ def esviritu():
     logger.info(clust_db_fasta)
 
     ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
+    sec_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.second.filt.sorted.bam")
+
     second_map_bam = esvf.minimap2_f(
         clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
-        str(args.SAMPLE),
-        str(args.TEMP_DIR)
+        sec_bam_f
     )
 
     ## take final .bam, make final consensus .fastas
@@ -441,6 +442,13 @@ def esviritu():
         ),
         separator = "\t"
     )
+
+    ## Make bedtools-like windows coverage
+    windows_cov_df = esvf.bam_coverage_windows(
+        second_map_bam
+    )
+    logger.info(windows_cov_df)
+
     ## Make "main" output table
 
     main_out_df = esvf.main_table_maker(
