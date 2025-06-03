@@ -174,6 +174,7 @@ def minimap2_f(reference: str,
         'minimap2', '-t', cpus, 
         '-ax', 'sr', 
         '--secondary=yes', 
+        '--secondary-seq',
         '--sam-hit-only',
         '-f', '1000',
         '-N' '100',
@@ -612,6 +613,9 @@ def assembly_table_maker(
         pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
         pl.lit(sample).alias("sample_ID")
     ])
+    # for the output "main" table we only want records with 1 or more reads
+    merged_out = merged.filter(pl.col("read_count") >= 1)
+
     # Group/summarize by assembly (for segmented viruses)
     assem_df = merged.group_by(
         ["sample_ID", "filtered_reads_in_sample", "Assembly", 
@@ -630,7 +634,8 @@ def assembly_table_maker(
         (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
     ).filter(pl.col("read_count") >= 1)
 
-    return merged, assem_df
+
+    return merged_out, assem_df
 
 ## recapitulate coverage table without bedtools
 def bam_coverage_windows(bam_path: str) -> pl.DataFrame:

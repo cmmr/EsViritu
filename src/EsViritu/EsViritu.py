@@ -131,11 +131,13 @@ def esviritu():
     # Custom color formatter for info-level logs
     class ColorFormatter(logging.Formatter):
         BLUE = "\033[94m"
+        BRIGHT_BLUE = "\033[94m"
+        YELLOW = "\033[93m"
         RESET = "\033[0m"
         def format(self, record):
             msg = super().format(record)
             if record.levelno == logging.INFO:
-                msg = f"{self.BLUE}{msg}{self.RESET}"
+                msg = f"{self.BRIGHT_BLUE}{msg}{self.RESET}"
             return msg
 
     # stream gets printed to terminal
@@ -488,7 +490,7 @@ def esviritu():
         str(args.OUTPUT_DIR),
         f"{str(args.SAMPLE)}.detected_virus.assembly_summary.json"
     )
-    assem_out_df.write_json(
+    assem_out_df.write_ndjson(
         file = assem_of
     )
 
