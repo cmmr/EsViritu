@@ -247,15 +247,14 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     records = []
     for contig in bamfile.header.references:
         length = bamfile.header.get_reference_length(contig)
-        # Get coverage (depth) for each base in contig
-        # count_coverage returns a tuple of 4 arrays (A,C,G,T)
-        cov = bamfile.count_coverage(contig, read_callback = "all")
-        # Sum across all bases
-        #total_cov = sum(cov)
-        # Per-base depth
-        per_base_coverage = [sum(bases) for bases in zip(*cov)]
-        covered_bases = sum(1 for d in per_base_coverage if d > 0)
-        mean_cov = sum(per_base_coverage) / length if length > 0 else 0
+        # Use pileup to get per-base coverage
+        coverage = [0] * length
+        for pileupcolumn in bamfile.pileup(contig=contig, start=0, end=length, stepper="nofilter"):
+            # pileupcolumn.pos is 0-based coordinate
+            if 0 <= pileupcolumn.pos < length:
+                coverage[pileupcolumn.pos] = pileupcolumn.nsegments
+        covered_bases = sum(1 for d in coverage if d > 0)
+        mean_cov = sum(coverage) / length if length > 0 else 0
         # Read count for contig
         read_count = bamfile.count(contig=contig)
         if read_count >= 1:
@@ -624,9 +623,9 @@ def assembly_table_maker(
         #covered_bases
         pl.col("covered_bases").sum().alias("covered_bases"),
         #Accessions
-        pl.col("Accession").flatten(),
+        pl.col("Accession").flatten().cast(pl.List(pl.Utf8)).list.join(", "),
         #Segments
-        pl.col("Segment").flatten(),
+        pl.col("Segment").flatten().cast(pl.List(pl.Utf8)).list.join(", "),
     ).with_columns(
         (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
     ).filter(pl.col("read_count") >= 1)
@@ -653,17 +652,18 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
             end = contig_len if i == 99 else min((i + 1) * window_size, contig_len)
             if start >= contig_len:
                 break
-            # Get coverage for this window
-            coverage = bam.count_coverage(contig, start=start, end=end, read_callback = "all")
-            # coverage is a tuple of 4 arrays (A, C, G, T); sum to get total coverage per base
-            # Per-base depth
-            per_base_coverage = [sum(bases) for bases in zip(*coverage)]
-            covered_bases = sum(1 for d in per_base_coverage if d > 0)
-            #total_cov = sum(coverage)
-            if len(covered_bases) == 0:
+            # Get coverage for this window using pileup
+            window_length = end - start
+            coverage = [0] * window_length
+            for pileupcolumn in bam.pileup(contig=contig, start=start, end=end, stepper="nofilter"):
+                pos_in_window = pileupcolumn.pos - start
+                if 0 <= pos_in_window < window_length:
+                    coverage[pos_in_window] = pileupcolumn.nsegments
+            covered_bases = sum(1 for d in coverage if d > 0)
+            if covered_bases == 0:
                 avg_cov = 0.0
             else:
-                avg_cov = float(sum(per_base_coverage)) / (end - start) if (end - start) > 0 else 0.0
+                avg_cov = float(sum(coverage)) / window_length if window_length > 0 else 0.0
             records.append({
                 "Accession": contig,
                 "window_index": i,
