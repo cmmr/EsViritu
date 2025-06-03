@@ -616,7 +616,7 @@ def assembly_table_maker(
     assem_df = merged.group_by(
         ["sample_ID", "filtered_reads_in_sample", "Assembly", 
         "Asm_length", "kingdom", "phylum", "tclass", "order", 
-        "family", "genus", "species", "subspecies", "sample"] 
+        "family", "genus", "species", "subspecies"] 
     ).agg(
         # read_count
         pl.col("read_count").sum().alias("read_count"),
