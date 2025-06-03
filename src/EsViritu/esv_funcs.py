@@ -608,7 +608,7 @@ def assembly_table_maker(
         )
     # calculate/add more columns
     merged = merged.with_columns([
-        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
+        (pl.col("read_count") / (pl.col("Length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
         pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
         pl.lit(sample).alias("sample_ID")
     ])

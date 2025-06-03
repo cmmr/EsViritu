@@ -128,10 +128,20 @@ def esviritu():
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
+    # Custom color formatter for info-level logs
+    class ColorFormatter(logging.Formatter):
+        BLUE = "\033[94m"
+        RESET = "\033[0m"
+        def format(self, record):
+            msg = super().format(record)
+            if record.levelno == logging.INFO:
+                msg = f"{self.BLUE}{msg}{self.RESET}"
+            return msg
+
     # stream gets printed to terminal
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
+    stream_handler.setFormatter(ColorFormatter('%(asctime)s - %(levelname)s - %(message)s'))
 
     # file gets saved to a specified file
     log_file_path = os.path.join(
