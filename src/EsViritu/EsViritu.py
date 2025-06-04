@@ -142,7 +142,7 @@ def esviritu():
         def format(self, record):
             msg = super().format(record)
             if record.levelno == logging.INFO:
-                msg = f"{self.BRIGHT_BLUE}{msg}{self.RESET}"
+                msg = f"{self.YELLOW}{msg}{self.RESET}"
             return msg
 
     # stream gets printed to terminal
