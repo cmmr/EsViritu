@@ -32,12 +32,9 @@ def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', 
         return ''.join([bars[i] for i in idxs])
 
     # Group windows by Accession, flatten average_coverage to cov_list
-    grouped = (
-        windows.group_by('Accession')
-        .agg([
-            pl.col('average_coverage').list().alias('cov_list')
-        ])
-    )
+    grouped = windows.group_by('Accession').agg(
+            pl.col('average_coverage').flatten().alias('cov_list')
+        )
     # Join with meta on Accession
     joined = grouped.join(meta, on='Accession', how='inner')
     # Select and order columns

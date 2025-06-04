@@ -8,8 +8,10 @@ import logging
 import polars as pl
 try:
     from . import esv_funcs as esvf
+    from .utils.timing import timed_function
 except:
     import esv_funcs as esvf
+    from utils.timing import timed_function
 try:
     from . import report_funcs as repf
 except:
@@ -264,7 +266,9 @@ def esviritu():
         "filter_seqs.fna"
     )
 
-    trim_filt_reads = esvf.trim_filter(
+    # Apply the timed_function decorator directly to the function call
+    trim_filter_fn = timed_function(logger=logger)(esvf.trim_filter)
+    trim_filt_reads = trim_filter_fn(
         args.READS,
         str(args.OUTPUT_DIR),
         str(args.TEMP_DIR),
@@ -279,7 +283,8 @@ def esviritu():
     logger.info(trim_filt_reads)
 
     # get read stats for mapping pipeline
-    filtered_reads = esvf.fastp_stats(
+    fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
+    filtered_reads = fastp_stats_fn(
         trim_filt_reads,
         str(args.OUTPUT_DIR),
         str(args.SAMPLE),
@@ -289,7 +294,8 @@ def esviritu():
 
     # map reads to virus DB and filter for good alignments
     init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")
-    initial_map_bam = esvf.minimap2_f(
+    minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
+    initial_map_bam = minimap2_f_fn(
         db_index,
         trim_filt_reads,
         str(args.CPU),
@@ -299,7 +305,8 @@ def esviritu():
     logger.info(initial_map_bam)
 
     # Make coverm-like table from initial bam
-    init_coverm_like_dt = esvf.bam_to_coverm_table(
+    bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
+    init_coverm_like_dt = bam_to_coverm_table_fn(
         initial_map_bam,
         str(args.SAMPLE)
     )
@@ -321,7 +328,8 @@ def esviritu():
         )
 
     # make consensus .fasta from initial alignment
-    initial_consensus = esvf.pileup_consensus(
+    pileup_consensus_fn = timed_function(logger=logger)(esvf.pileup_consensus)
+    initial_consensus = pileup_consensus_fn(
         initial_map_bam,
         os.path.join(
             args.TEMP_DIR,
@@ -331,14 +339,16 @@ def esviritu():
 
     logger.info(initial_consensus)
 
-    init_assembly_concat = esvf.concat_asm_accessions(
+    concat_asm_accessions_fn = timed_function(logger=logger)(esvf.concat_asm_accessions)
+    init_assembly_concat = concat_asm_accessions_fn(
         initial_consensus,
         vir_meta_df
     )
 
     # compare initial consensus seqs to each other
     ## blastn method
-    pairwise_bn_initial_dt = esvf.blastn_self_compare(
+    blastn_self_compare_fn = timed_function(logger=logger)(esvf.blastn_self_compare)
+    pairwise_bn_initial_dt = blastn_self_compare_fn(
         init_assembly_concat,
         str(args.CPU)
     )
@@ -374,7 +384,8 @@ def esviritu():
     logger.info(aniclust_bn_f)
 
     ## make new fasta file from aniclust exemplars
-    clust_db_fasta = esvf.final_record_getter(
+    final_record_getter_fn = timed_function(logger=logger)(esvf.final_record_getter)
+    clust_db_fasta = final_record_getter_fn(
         aniclust_bn_f,
         vir_meta_df,
         db_fasta,
@@ -388,7 +399,8 @@ def esviritu():
     ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
     sec_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.second.filt.sorted.bam")
 
-    second_map_bam = esvf.minimap2_f(
+    minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
+    second_map_bam = minimap2_f_fn(
         clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
@@ -400,14 +412,16 @@ def esviritu():
         str(args.OUTPUT_DIR),
         f"{str(args.SAMPLE)}_final_consensus.fasta"
     )
-    second_consensus_fasta = esvf.bam_to_consensus_fasta(
+    bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
+    second_consensus_fasta = bam_to_consensus_fasta_fn(
         second_map_bam,
         sec_con_f
     )
     logger.info(second_consensus_fasta)
 
     # Make coverm-like table from final bam
-    second_coverm_like_dt = esvf.bam_to_coverm_table(
+    bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
+    second_coverm_like_dt = bam_to_coverm_table_fn(
         second_map_bam,
         str(args.SAMPLE)
     )
@@ -423,14 +437,16 @@ def esviritu():
     )
 
     ## Make bedtools-like windows coverage
-    windows_cov_df = esvf.bam_coverage_windows(
+    bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)
+    windows_cov_df = bam_coverage_windows_fn(
         second_map_bam
     )
     logger.info(windows_cov_df)
 
     ## Make "main" and "assembly" output table
 
-    main_out_df, assem_out_df = esvf.assembly_table_maker(
+    assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
+    main_out_df, assem_out_df = assembly_table_maker_fn(
         second_coverm_like_dt,
         vir_meta_df,
         filtered_reads,
@@ -469,7 +485,9 @@ def esviritu():
         f"{str(args.SAMPLE)}_virus_report.html"
     )
 
-    html_f = repf.make_dash_aggrid_html_report(
+    # Apply the timed_function decorator to the report generation
+    make_report_fn = timed_function(logger=logger)(repf.make_dash_aggrid_html_report)
+    html_f = make_report_fn(
         windows_cov_df,
         main_out_df,
         html_f
