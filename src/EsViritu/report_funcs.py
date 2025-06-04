@@ -1,5 +1,4 @@
 from dash import Dash, html as dash_html
-import flask
 import dash_ag_grid as dag
 from datetime import datetime
 import json
@@ -7,7 +6,8 @@ import os
 import polars as pl
 import tempfile
 import numpy as np
-
+import io
+from contextlib import redirect_stdout
 ## make json, load json, make report with sparklines
 def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', output_html: str = 'report.html') -> str:
     """
@@ -208,160 +208,142 @@ def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', 
 
     # Save as HTML (without launching server)
     try:
-        # Use a more modern approach to generate standalone HTML
-        app.layout = app.layout  # Ensure layout is set
+        # Skip trying to use Dash's internal methods and go straight to a reliable HTML generation approach
+        # Create a complete HTML document with the table content
         
-        # Method 1: Use dash.dash.get_relative_path if available
-        try:
-            # Use a simpler approach that ensures the app content is included
-
+        # Convert the Dash layout to a string representation
+        # Instead of trying to convert Dash layout to string, build HTML directly
+        # Extract data from the table rows we already built
+        table_html = f'''
+        <table class="report-table">
+            <thead>
+                <tr>
+                    {"\n                    ".join([f'<th>{column_display_names.get(col, col)}</th>' for col in columns])}
+                </tr>
+            </thead>
+            <tbody>
+        '''
+        
+        # Add each row of data
+        for i, row in enumerate(data):
+            row_class = 'even-row' if i % 2 else 'odd-row'
+            table_html += f'<tr class="{row_class}">\n'
             
-            # Collect app resources (CSS/JS)
-            resources = app._collect_and_register_resources()
-            css = '\n'.join([
-                f'<link rel="stylesheet" href="{resource.relative_package_path}">' 
-                for resource in resources.get('css', [])
-            ])
-            js = '\n'.join([
-                f'<script src="{resource.relative_package_path}"></script>' 
-                for resource in resources.get('js', [])
-            ])
+            for col in columns:
+                val = row.get(col, "")
+                
+                # Format numeric values
+                if col in ["mean_coverage", "RPKMF"] and val:
+                    try:
+                        val = f"{float(val):.2f}"
+                    except (ValueError, TypeError):
+                        pass
+                elif col == "read_count" and val:
+                    try:
+                        val = f"{int(val):,}"
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Special handling for sparklines
+                if col == "cov_list":
+                    spark = sparkline(val)
+                    table_html += f'<td class="bar-medium">{spark}</td>\n'
+                else:
+                    table_html += f'<td>{val}</td>\n'
             
-            # Convert Dash layout to HTML string
-            app_div = app.layout
-            app_html = ''
+            table_html += '</tr>\n'
+        
+        table_html += '</tbody></table>'
             
-            # Try to get the HTML representation of the app layout
-            try:
-                # First attempt: Use flask's render_template if available
-                app_html = flask.render_template_string(
-                    """{% for component in components %}{{ component }}{% endfor %}""",
-                    components=[app_div]
-                )
-            except Exception as e:
-                # Second attempt: Convert components to HTML strings manually
-                logger.warning(f"Using manual HTML conversion: {e}")
-                app_html = str(app_div)
-            
-            # Create complete HTML document
-            rendered = f'''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Virus Coverage Report</title>
-                <style>
-                    @font-face {{
-                        font-family: "Sparks-Bar-Narrow";
-                        src: url("https://cdn.jsdelivr.net/gh/aftertheflood/sparks@9.0.0/output/assets/fonts/Sparks-Bar-Narrow.woff2") format("woff2");
-                        font-weight: normal;
-                        font-style: normal;
-                    }}
-                    body {{
-                        font-family: Arial, sans-serif;
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }}
-                    table {{
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 20px;
-                        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
-                    }}
-                    th {{
-                        background-color: #f2f2f2;
-                        color: #333;
-                        font-weight: bold;
-                        text-align: left;
-                        padding: 12px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    td {{
-                        padding: 10px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    tr:nth-child(even) {{
-                        background-color: #f9f9f9;
-                    }}
-                    .bar-medium {{
-                        font-family: "Sparks-Bar-Narrow";
-                        font-size: 18px;
-                        letter-spacing: 1px;
-                        background-color: #fff;
-                    }}
-                </style>
-                {css}
-            </head>
-            <body>
-                <div id="dash-container">
-                    {app_html}
-                </div>
-                {js}
-            </body>
-            </html>
-            '''
-            
-        # Method 2: Fallback to simpler approach
-        except Exception as inner_e:
-            logger.warning(f"Using fallback HTML generation method: {inner_e}")
-            
-            # Create a basic HTML structure
-            rendered = f'''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Virus Coverage Report</title>
-                <style>
-                    @font-face {{
-                        font-family: "Sparks-Bar-Narrow";
-                        src: url("https://cdn.jsdelivr.net/gh/aftertheflood/sparks@9.0.0/output/assets/fonts/Sparks-Bar-Narrow.woff2") format("woff2");
-                        font-weight: normal;
-                        font-style: normal;
-                    }}
-                    body {{
-                        font-family: Arial, sans-serif;
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }}
-                    table {{
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 20px;
-                        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
-                    }}
-                    th {{
-                        background-color: #f2f2f2;
-                        color: #333;
-                        font-weight: bold;
-                        text-align: left;
-                        padding: 12px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    td {{
-                        padding: 10px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    tr:nth-child(even) {{
-                        background-color: #f9f9f9;
-                    }}
-                    .bar-medium {{
-                        font-family: "Sparks-Bar-Narrow";
-                        font-size: 18px;
-                        letter-spacing: 1px;
-                        background-color: #fff;
-                    }}
-                </style>
-            </head>
-            <body>
-                {app.layout.to_plotly_json()}
-            </body>
-            </html>
-            '''
+        # Create a complete HTML document with all necessary styling and content
+        rendered = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virus Coverage Report</title>
+    <link rel="stylesheet" href="../assets/sparks-fonts.css">
+    <style>
+        /* Font is loaded from the local CSS file */
+        body {{
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        h1 {{
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+        }}
+        p.timestamp {{
+            color: #7f8c8d;
+            margin-top: 0;
+            text-align: center;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+        }}
+        th {{
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }}
+        td {{
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        .bar-medium {{
+            font-family: "Sparks-Bar-Narrow";
+            font-size: 18px;
+            letter-spacing: 1px;
+            background-color: #fff;
+            white-space: nowrap;
+        }}
+        .report-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+        }}
+        .even-row {{
+            background-color: #f9f9f9;
+        }}
+        .footer {{
+            margin-top: 30px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }}
+        .bold {{
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+    <h1>Virus Coverage Report</h1>
+    <p class="timestamp">Generated: {timestamp}</p>
+    
+    {table_html}
+    
+    <div class="footer">
+        <p>Report generated by EsViritu. <span class="bold">Coverage profiles</span> show normalized coverage across the genome.</p>
+    </div>
+</body>
+</html>
+'''
         
         # Write the HTML file
         with open(output_html, 'w') as f:

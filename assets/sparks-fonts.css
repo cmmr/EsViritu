@@ -1,23 +1,15 @@
 @font-face {
   font-family: 'Sparks-Bar-Narrow';
-  src: url('https://tools.aftertheflood.com/sparks/output/eot/Sparks-Bar-Narrow.eot');
-  src: url('https://tools.aftertheflood.com/sparks/output/eot/Sparks-Bar-Narrow.eot?#iefix') format('embedded-opentype'),
-       url('https://tools.aftertheflood.com/sparks/output/woff2/Sparks-Bar-Narrow.woff2') format('woff2'),
-       url('https://tools.aftertheflood.com/sparks/output/woff/Sparks-Bar-Narrow.woff') format('woff'),
-       url('https://tools.aftertheflood.com/sparks/output/ttf/Sparks-Bar-Narrow.ttf') format('truetype'),
-       url('https://tools.aftertheflood.com/sparks/output/svg/Sparks-Bar-Narrow.svg#Sparks-Bar-Narrow') format('svg');
+  src: url('../assets/fonts/Sparks-Bar-Narrow.woff2') format('woff2'),
+       url('../assets/fonts/Sparks-Bar-Narrow.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'Sparks-Bar-Medium';
-  src: url('https://tools.aftertheflood.com/sparks/output/eot/Sparks-Bar-Medium.eot');
-  src: url('https://tools.aftertheflood.com/sparks/output/eot/Sparks-Bar-Medium.eot?#iefix') format('embedded-opentype'),
-       url('https://tools.aftertheflood.com/sparks/output/woff2/Sparks-Bar-Medium.woff2') format('woff2'),
-       url('https://tools.aftertheflood.com/sparks/output/woff/Sparks-Bar-Medium.woff') format('woff'),
-       url('https://tools.aftertheflood.com/sparks/output/ttf/Sparks-Bar-Medium.ttf') format('truetype'),
-       url('https://tools.aftertheflood.com/sparks/output/svg/Sparks-Bar-Medium.svg#Sparks-Bar-Medium') format('svg');
+  src: url('../assets/fonts/Sparks-Bar-Medium.woff2') format('woff2'),
+       url('../assets/fonts/Sparks-Bar-Medium.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
