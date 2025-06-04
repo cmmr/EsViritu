@@ -214,11 +214,14 @@ def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', 
         # Convert the Dash layout to a string representation
         # Instead of trying to convert Dash layout to string, build HTML directly
         # Extract data from the table rows we already built
+        # Create the table header HTML
+        headers_html = '\n                    '.join([f'<th>{column_display_names.get(col, col)}</th>' for col in columns])
+        
         table_html = f'''
         <table class="report-table">
             <thead>
                 <tr>
-                    {"\n                    ".join([f'<th>{column_display_names.get(col, col)}</th>' for col in columns])}
+                    {headers_html}
                 </tr>
             </thead>
             <tbody>
