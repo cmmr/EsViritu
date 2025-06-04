@@ -318,7 +318,7 @@ def esviritu():
         )
 
     # make consensus .fasta from initial alignment
-    initial_consensus = esvf.bam_to_consensus_fasta(
+    initial_consensus = esvf.pileup_consensus(
         initial_map_bam,
         os.path.join(
             args.TEMP_DIR,

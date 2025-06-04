@@ -7,7 +7,7 @@ import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
 from typing import Tuple
-from collections import defaultdict
+from collections import defaultdict, Counter
 from distutils.spawn import find_executable
 logger = logging.getLogger("esv_logger")
 
@@ -139,14 +139,22 @@ def fastp_stats(reads: list, outdir: str, sample_name: str,
             "-w", str(fastp_threads), "--html", pipeline_stats_fastp_html, 
             "--json", pipeline_stats_fastp_json
         ]
-        subprocess.run(fastp_stat_paired_cmd, check=True)
+        try:
+            subprocess.run(fastp_stat_paired_cmd, check=True)
+        except Exception as e:
+            logger.error(f"fastp_stat_paired_cmd failed: {fastp_stat_paired_cmd}\nError: {e}")
+            raise
     else:
         fastp_stat_single_cmd = [
             "fastp", "-i", reads[0],
             "-w", str(fastp_threads), "--html", pipeline_stats_fastp_html, 
             "--json", pipeline_stats_fastp_json
         ]
-        subprocess.run(fastp_stat_single_cmd, check=True)
+        try:
+            subprocess.run(fastp_stat_single_cmd, check=True)
+        except Exception as e:
+            logger.error(f"fastp_stat_single_cmd failed: {fastp_stat_single_cmd}\nError: {e}")
+            raise
     
     ## get total reads from fastp json
     total_reads = None
@@ -289,7 +297,11 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
         '-o', output_fasta,
         bam_path
     ]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except Exception as e:
+        logger.error(f"samtools consensus failed: {cmd}\nError: {e}")
+        raise
     return output_fasta
 
 ## (experimental) concatenate records from the same assembly
@@ -305,7 +317,11 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
     # Get accessions in fasta using seqkit
     with tempfile.NamedTemporaryFile(delete=False, mode='w+', suffix='.txt') as acc_file:
         seqkit_cmd = ["seqkit", "fx2tab", "-n", "-i", fasta_path]
-        subprocess.run(seqkit_cmd, check=True, stdout=acc_file)
+        try:
+            subprocess.run(seqkit_cmd, check=True, stdout=acc_file)
+        except Exception as e:
+            logger.error(f"seqkit_cmd failed: {seqkit_cmd}\nError: {e}")
+            raise
         acc_file.flush()
         acc_file.seek(0)
         accessions = [line.strip() for line in acc_file.readlines() if line.strip()]
@@ -332,7 +348,11 @@ def concat_asm_accessions(fasta_path: str, df: pl.DataFrame, output_fasta: str =
                 accs_f.write('\n'.join(acc_list) + '\n')
                 accs_f.flush()
                 seqkit_cmd = ["seqkit", "grep", "-f", accs_f.name, fasta_path]
-                result = subprocess.run(seqkit_cmd, check=True, capture_output=True, text=True)
+                try:
+                    result = subprocess.run(seqkit_cmd, check=True, capture_output=True, text=True)
+                except Exception as e:
+                    logger.error(f"seqkit_cmd failed: {seqkit_cmd}\nError: {e}")
+                    raise
             os.remove(accs_f.name)
             # Concatenate sequences (remove headers, join seqs)
             seqs = []
@@ -366,7 +386,11 @@ def minimap2_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
         fasta_path, fasta_path
     ]
     with open(paf_file.name, 'w') as outpaf:
-        subprocess.run(cmd, stdout=outpaf, check=True)
+        try:
+            subprocess.run(cmd, stdout=outpaf, check=True)
+        except Exception as e:
+            logger.error(f"minimap2 cmd failed: {cmd}\nError: {e}")
+            raise
 
     # PAF format columns:
     # [0]query [1]qlen [2]qstart [3]qend [4]strand [5]target [6]tlen [7]tstart [8]tend [9]nmatch [10]alen [11]mapq ... tags
@@ -447,7 +471,11 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
         "-dbtype", "nucl",
         "-out", db_prefix
     ]
-    subprocess.run(makeblastdb_cmd, check=True)
+    try:
+        subprocess.run(makeblastdb_cmd, check=True)
+    except Exception as e:
+        logger.error(f"makeblastdb_cmd failed: {makeblastdb_cmd}\nError: {e}")
+        raise
 
     # Run BLASTN all-vs-all
     blast_out = tempfile.NamedTemporaryFile(delete=False, suffix='.blast.tsv')
@@ -459,7 +487,11 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
         "-num_threads", str(threads),
         "-out", blast_out.name
     ]
-    subprocess.run(blastn_cmd, check=True)
+    try:
+        subprocess.run(blastn_cmd, check=True)
+    except Exception as e:
+        logger.error(f"blastn_cmd failed: {blastn_cmd}\nError: {e}")
+        raise
 
     # Parse BLAST output
     pair_records = defaultdict(list)
@@ -558,7 +590,11 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
         acc_file_path = acc_file.name
     # Step 5: Run seqkit grep
     seqkit_cmd = ["seqkit", "grep", "-f", acc_file_path, db_fasta, "-o", output_fasta]
-    subprocess.run(seqkit_cmd, check=True)
+    try:
+        subprocess.run(seqkit_cmd, check=True)
+    except Exception as e:
+        logger.error(f"seqkit_cmd failed: {seqkit_cmd}\nError: {e}")
+        raise
     os.remove(acc_file_path)
     return output_fasta
 
@@ -680,29 +716,42 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
     return pl.DataFrame(records)
 
 ## Alternative, loose consensus func
-def pileup_consensus(): #### NEEDS TO BE FINISHED!!!
+def pileup_consensus(bam_path: str, output_fasta: str) -> str:
+    """
+    Generates a consensus FASTA sequence from a BAM file by examining the pileup at each position.
+    For each position, the most frequent base is chosen.
+    Writes the consensus sequences for each contig to the specified output FASTA file.
+    
+    Args:
+        bam_path: Path to the input BAM file.
+        output_fasta: Path to the output FASTA file where consensus sequences will be written.
+        
+    Returns:
+        The path to the output FASTA file containing the consensus sequences.
+    """
     bamfile = pysam.AlignmentFile(bam_path, "rb")
-    reference = "MK139278.1"  # or your reference name
 
-    con_seq = []
-    for pileupcolumn in bamfile.pileup(reference, stepper="nofilter"):
-        base_counts = Counter()
-        #print("\ncoverage at base %s = %s" % (pileupcolumn.pos, pileupcolumn.get_query_names()))
-        for pileupread in pileupcolumn.pileups:
-            if not pileupread.is_del and not pileupread.is_refskip:
-                base = pileupread.alignment.query_sequence[pileupread.query_position]
-                base_counts[base] += 1
-                #print('\tbase in read %s = %s' %
-                #      (pileupread.alignment.query_name,
-                #       pileupread.alignment.query_sequence[pileupread.query_position]))
-        #print(f"Position {pileupcolumn.reference_pos + 1}: {dict(base_counts)}")
-        if base_counts: 
-            con_seq.append(max(base_counts, key=base_counts.get))
-        else:
-            con_seq.append("N")
+    with open(output_fasta, 'w') as outf:
+        for contig in bamfile.header.references:
+            con_seq = []
+            for pileupcolumn in bamfile.pileup(contig, stepper="nofilter"):
+                base_counts = Counter()
+                for pileupread in pileupcolumn.pileups:
+                    if not pileupread.is_del and not pileupread.is_refskip:
+                        base = pileupread.alignment.query_sequence[pileupread.query_position].upper()
+                        base_counts[base] += 1
+                if base_counts: 
+                    con_seq.append(max(base_counts, key=base_counts.get))
+                else:
+                    con_seq.append("N")
+            print(f">{contig}", file = outf)
+            seq = ''.join(con_seq)
+            for i in range(0, len(seq), 60):
+                print(seq[i:i+60], file=outf)
+    
+    bamfile.close()
 
-    print(f">{reference}")
-    print(''.join(con_seq))
+    return output_fasta
 
 ## Compare consensus .fastas to reference .fastas
 ## Make reactable (or python-based version?)
