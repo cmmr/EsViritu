@@ -543,9 +543,9 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
             'qname': qname,
             'tname': sname,
             'num_alns': num_alignments,
-            'ani': pid,
-            'qcov': qcov,
-            'tcov': tcov
+            'pid': float(f"{pid:.3g}"),
+            'qcov': float(f"{qcov:.3g}"),
+            'tcov': float(f"{tcov:.3g}")
         })
     # Cleanup
     blast_out.close()
@@ -744,10 +744,12 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
                     con_seq.append(max(base_counts, key=base_counts.get))
                 else:
                     con_seq.append("N")
-            print(f">{contig}", file = outf)
-            seq = ''.join(con_seq)
-            for i in range(0, len(seq), 60):
-                print(seq[i:i+60], file=outf)
+            
+            if len(con_seq) > 100:
+                print(f">{contig}", file = outf)
+                seq = ''.join(con_seq)
+                for i in range(0, len(seq), 60):
+                    print(seq[i:i+60], file=outf)
     
     bamfile.close()
 

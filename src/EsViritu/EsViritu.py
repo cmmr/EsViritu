@@ -10,7 +10,10 @@ try:
     from . import esv_funcs as esvf
 except:
     import esv_funcs as esvf
-
+try:
+    from . import report_funcs as repf
+except:
+    import report_funcs as repf
 
 def esviritu():
 
@@ -334,42 +337,6 @@ def esviritu():
     )
 
     # compare initial consensus seqs to each other
-    ## minimap2 method
-    pairwise_mm_initial_dt = esvf.minimap2_self_compare(
-        init_assembly_concat,
-        str(args.CPU)
-    )
-
-    anicalc_mm_f = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_mm_anicalc.tsv"
-        )
-    pairwise_mm_initial_dt.write_csv(
-        file = anicalc_mm_f,
-        separator = "\t"
-    )
-    logger.info(anicalc_mm_f)
-
-    # Run aniclust.py
-    aniclust_mm_f = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_mm_aniclust.tsv"
-        )
-    aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
-    clustcmd = [
-        sys.executable, aniclustpy_path, 
-        '--fna', init_assembly_concat, 
-        '--ani', anicalc_mm_f, 
-        '--out', aniclust_mm_f,
-        '--min_ani', str(98), 
-        '--min_qcov', str(50), 
-        '--min_tcov', str(0), 
-        '--min_length', str(0)
-        ]
-    subprocess.run(clustcmd, check=True)
-
-    logger.info(aniclust_mm_f)
-
     ## blastn method
     pairwise_bn_initial_dt = esvf.blastn_self_compare(
         init_assembly_concat,
@@ -384,7 +351,7 @@ def esviritu():
         file = anicalc_bn_f,
         separator = "\t"
     )
-    logger.info(anicalc_mm_f)
+    logger.info(anicalc_bn_f)
 
     # Run aniclust.py
     aniclust_bn_f = os.path.join(
@@ -395,7 +362,7 @@ def esviritu():
     clustcmd = [
         sys.executable, aniclustpy_path, 
         '--fna', init_assembly_concat, 
-        '--ani', anicalc_mm_f, 
+        '--ani', anicalc_bn_f, 
         '--out', aniclust_bn_f,
         '--min_ani', str(98), 
         '--min_qcov', str(50), 
@@ -495,6 +462,20 @@ def esviritu():
     )
 
     logger.info(assem_of)
+
+    # make the html interactive table with sparklines
+    html_f = os.path.join(
+        args.OUTPUT_DIR,
+        f"{str(args.SAMPLE)}_virus_report.html"
+    )
+
+    html_f = repf.make_dash_aggrid_html_report(
+        windows_cov_df,
+        main_out_df,
+        html_f
+    )
+    
+    logger.info(html_f)
 
 
 if __name__ == "__main__":
