@@ -781,7 +781,7 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
 
 ## read-based clustering function
 
-def contig_read_sharing_table(bam_path):
+def contig_read_sharing_table(bam_path) -> pl.DataFrame:
     """
     For a given BAM file, filter out contigs with no aligned reads, then compare each pair of contigs based on how many read IDs they share (primary or secondary alignments).
     Returns a polars DataFrame with contig pairs, number of shared reads, and share of total reads for each contig.

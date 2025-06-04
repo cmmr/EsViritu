@@ -9,13 +9,12 @@ import polars as pl
 try:
     from . import esv_funcs as esvf
     from .utils.timing import timed_function
+    from . import report_funcs as repf
 except:
     import esv_funcs as esvf
     from utils.timing import timed_function
-try:
-    from . import report_funcs as repf
-except:
     import report_funcs as repf
+
 
 def esviritu():
 
@@ -501,7 +500,7 @@ def esviritu():
     ## initial bam
     initial_read_comp_df = contig_read_sharing_table_fn(
         initial_map_bam
-    ),
+    )
     i_read_comp_of = os.path.join(
         str(args.TEMP_DIR),
         f"{str(args.SAMPLE)}.initial_read_comp_compare.tsv"
@@ -513,7 +512,7 @@ def esviritu():
     ## second bam
     second_read_comp_df = contig_read_sharing_table_fn(
         second_map_bam
-    ),
+    )
     sec_read_comp_of = os.path.join(
         str(args.TEMP_DIR),
         f"{str(args.SAMPLE)}.second_read_comp_compare.tsv"
