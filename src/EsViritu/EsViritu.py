@@ -386,6 +386,7 @@ def esviritu():
     final_record_getter_fn = timed_function(logger=logger)(esvf.final_record_getter)
     clust_db_fasta = final_record_getter_fn(
         aniclust_bn_f,
+        0,
         vir_meta_df,
         db_fasta,
         os.path.join(
@@ -495,11 +496,12 @@ def esviritu():
     #logger.info(html_f)
 
     # read comparison of contigs
-    contig_read_sharing_table_fn = timed_function(logger=logger)(esvf.contig_read_sharing_table)
+    asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
 
     ## initial bam
-    initial_read_comp_df = contig_read_sharing_table_fn(
-        initial_map_bam
+    initial_read_comp_df = asm_read_sharing_table_fn(
+        initial_map_bam,
+        vir_meta_df
     )
     i_read_comp_of = os.path.join(
         str(args.TEMP_DIR),
@@ -509,9 +511,22 @@ def esviritu():
         file = i_read_comp_of,
         separator = "\t"
     )
+
+    read_clust_init_df = esvf.cluster_assemblies_by_read_sharing(
+        initial_read_comp_df
+    )
+    i_read_clust_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.initial_read_comp_clust.tsv"
+    )
+    read_clust_init_df.write_csv(
+        file = i_read_clust_of,
+        separator = "\t"
+    )
     ## second bam
-    second_read_comp_df = contig_read_sharing_table_fn(
-        second_map_bam
+    second_read_comp_df = asm_read_sharing_table_fn(
+        second_map_bam,
+        vir_meta_df
     )
     sec_read_comp_of = os.path.join(
         str(args.TEMP_DIR),
@@ -520,6 +535,27 @@ def esviritu():
     second_read_comp_df.write_csv(
         file = sec_read_comp_of,
         separator = "\t"
+    )
+    read_clust_sec_df = esvf.cluster_assemblies_by_read_sharing(
+        second_read_comp_df
+    )
+    sec_read_clust_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.second_read_comp_clust.tsv"
+    )
+    read_clust_sec_df.write_csv(
+        file = sec_read_clust_of,
+        separator = "\t"
+    )
+    final_record_getter_fn(
+        i_read_clust_of,
+        2,
+        vir_meta_df,
+        db_fasta,
+        os.path.join(
+            str(args.TEMP_DIR),
+            f"{str(args.SAMPLE)}.READ_BASED.clustered_refs.fasta"
+        )
     )
 
 

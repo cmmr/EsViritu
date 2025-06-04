@@ -571,11 +571,12 @@ def blastn_self_compare(fasta_path: str, threads: int = 2) -> pl.DataFrame:
 
 ## select final records based on aniclust
 
-def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: str, output_fasta: str) -> str:
+def final_record_getter(aniclust_tsv: str, field: int, vir_info_df: pl.DataFrame, db_fasta: str, output_fasta: str) -> str:
     """
     Select final records based on aniclust clusters.
     Args:
         aniclust_tsv: path to aniclust output tsv file (first field is assembly)
+        field: which field has exemplar name
         vir_info_df: polars DataFrame with at least columns 'Assembly' and 'Accession'
         db_fasta: path to full fasta file
         output_fasta: path to write filtered fasta (optional)
@@ -589,7 +590,7 @@ def final_record_getter(aniclust_tsv: str, vir_info_df: pl.DataFrame, db_fasta: 
         for line in f:
             fields = line.strip().split('\t')
             if fields:
-                assemblies.add(fields[0])
+                assemblies.add(fields[field])
     # Step 2: Get all rows from vir_info_df with those assemblies
     filtered_df = vir_info_df.filter(pl.col('Assembly').is_in(list(assemblies)))
     # Step 3: Get unique accessions
@@ -781,13 +782,17 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
 
 ## read-based clustering function
 
-def contig_read_sharing_table(bam_path) -> pl.DataFrame:
+def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFrame:
     """
-    For a given BAM file, filter out contigs with no aligned reads, then compare each pair of contigs based on how many read IDs they share (primary or secondary alignments).
-    Returns a polars DataFrame with contig pairs, number of shared reads, and share of total reads for each contig.
+    For a given BAM file and meta_df (with 'Accession' and 'Assembly'),
+    filter out contigs with no aligned reads, group contigs by Assembly, and compare each pair of contigs within each Assembly
+    based on how many read IDs they share (primary or secondary alignments).
+    Returns a polars DataFrame with Assembly, contig pairs, number of shared reads, and share of total reads for each contig.
     """
-
     bamfile = pysam.AlignmentFile(bam_path, "rb")
+    from collections import defaultdict
+    import polars as pl
+
     # Step 1: Collect read IDs for each contig
     contig_reads = defaultdict(set)
     for read in bamfile.fetch(until_eof=True):
@@ -799,16 +804,40 @@ def contig_read_sharing_table(bam_path) -> pl.DataFrame:
         if read.has_tag("SA"):
             contig_reads[contig].add(read.query_name)
     bamfile.close()
+
     # Step 2: Filter out contigs with no reads
     contig_reads = {k: v for k, v in contig_reads.items() if v}
-    contigs = list(contig_reads.keys())
-    # Step 3: Compare every pair of contigs
+    if not contig_reads:
+        return pl.DataFrame([])
+
+    # Step 3: Map contigs to assemblies
+    if not set(["Accession", "Assembly"]).issubset(set(meta_df.columns)):
+        raise ValueError("meta_df must have columns 'Accession' and 'Assembly'")
+    contig_to_assembly = dict(zip(meta_df["Accession"].to_list(), meta_df["Assembly"].to_list()))
+
+    # Group contigs by assembly
+    assembly_to_contigs = defaultdict(list)
+    for contig in contig_reads:
+        assembly = contig_to_assembly.get(contig, None)
+        if assembly is not None:
+            assembly_to_contigs[assembly].append(contig)
+
+    # Step 4: Build assembly-level read sets
+    assembly_reads = {}
+    for assembly, contigs in assembly_to_contigs.items():
+        reads = set()
+        for contig in contigs:
+            reads.update(contig_reads[contig])
+        assembly_reads[assembly] = reads
+
+    # Step 5: Compare each pair of assemblies for shared reads
+    assemblies = list(assembly_reads.keys())
     records = []
-    for i, a in enumerate(contigs):
-        reads_a = contig_reads[a]
-        for j in range(i+1, len(contigs)):
-            b = contigs[j]
-            reads_b = contig_reads[b]
+    for i, a in enumerate(assemblies):
+        reads_a = assembly_reads[a]
+        for j in range(i+1, len(assemblies)):
+            b = assemblies[j]
+            reads_b = assembly_reads[b]
             shared = reads_a & reads_b
             if shared:
                 n_shared = len(shared)
@@ -817,15 +846,82 @@ def contig_read_sharing_table(bam_path) -> pl.DataFrame:
                 tot_a = len(reads_a) if reads_a else 0.0
                 tot_b = len(reads_b) if reads_b else 0.0
                 records.append({
-                    "contig_a": a,
-                    "contig_b": b,
+                    "assembly_a": a,
+                    "assembly_b": b,
                     "total_reads_a": tot_a,
-                    "total_reads_a": tot_b,
+                    "total_reads_b": tot_b,
                     "n_shared_reads": n_shared,
                     "share_of_a": share_a,
                     "share_of_b": share_b
                 })
     return pl.DataFrame(records)
+
+
+## cluster contigs on read sharing
+
+def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
+    """
+    Cluster assemblies that share at least `threshold` (default 33%) of their reads (based on the assembly with fewer reads).
+    For each cluster, choose an exemplar assembly with the highest number of reads aligned.
+    Returns a polars DataFrame mapping each assembly to its cluster and exemplar.
+    """
+    import polars as pl
+    from collections import defaultdict
+
+    # Build undirected graph of assemblies to cluster
+    edges = []
+    for row in df.iter_rows(named=True):
+        n_shared = row['n_shared_reads']
+        min_reads = min(row['total_reads_a'], row['total_reads_b'])
+        if min_reads == 0:
+            continue
+        share = n_shared / min_reads
+        if share >= threshold:
+            edges.append((row['assembly_a'], row['assembly_b']))
+
+    # Union-find setup
+    parent = {}
+    def find(x):
+        while parent.get(x, x) != x:
+            x = parent[x]
+        return x
+    def union(x, y):
+        xr, yr = find(x), find(y)
+        if xr != yr:
+            parent[yr] = xr
+
+    # Union all connected assemblies
+    for a, b in edges:
+        union(a, b)
+
+    # Assign cluster ids
+    all_assemblies = set(df['assembly_a'].to_list()) | set(df['assembly_b'].to_list())
+    clusters = defaultdict(list)
+    for assembly in all_assemblies:
+        cluster_id = find(assembly)
+        clusters[cluster_id].append(assembly)
+
+    # Get total reads for each assembly
+    total_reads = {}
+    for row in df.iter_rows(named=True):
+        total_reads[row['assembly_a']] = row['total_reads_a']
+        total_reads[row['assembly_b']] = row['total_reads_b']
+
+    # Prepare output
+    records = []
+    for cluster_id, members in clusters.items():
+        # Choose exemplar: assembly with max total reads
+        exemplar = max(members, key=lambda c: total_reads.get(c, 0))
+        for assembly in members:
+            records.append({
+                'cluster_id': cluster_id,
+                'assembly': assembly,
+                'exemplar': exemplar,
+                'total_reads': total_reads.get(assembly, 0),
+                'is_exemplar': assembly == exemplar
+            })
+    return pl.DataFrame(records)
+
 
 
 ## Compare consensus .fastas to reference .fastas
