@@ -208,15 +208,89 @@ def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', 
 
     # Save as HTML (without launching server)
     try:
-        from dash._utils import AttributeDict
-        app._setup_server()
-        app._validate_layout()
-        rendered = app._generate_html(
-            AttributeDict({"request": None}),
-            app._layout_value(),
-            app._get_assets_url(),
-            app._collect_and_register_resources(),
-        )
+        # Use a more modern approach to generate standalone HTML
+        app.layout = app.layout  # Ensure layout is set
+        
+        # Method 1: Use dash.dash.get_relative_path if available
+        try:
+            html_string = app.index_string
+            resources = app._collect_and_register_resources()
+            css = '\n'.join([
+                f'<link rel="stylesheet" href="{resource.relative_package_path}">' 
+                for resource in resources.get('css', [])
+            ])
+            js = '\n'.join([
+                f'<script src="{resource.relative_package_path}"></script>' 
+                for resource in resources.get('js', [])
+            ])
+            
+            # Add custom CSS for sparkline fonts
+            css += '\n<style>\n@font-face {\n  font-family: "Sparks-Bar-Medium";\n  src: url("https://cdn.jsdelivr.net/gh/aftertheflood/sparks@9.0.0/output/assets/fonts/Sparks-Bar-Medium.woff2") format("woff2");\n  font-weight: normal;\n  font-style: normal;\n}\n</style>'
+            
+            html_string = html_string.replace('</head>', f'{css}</head>')
+            html_string = html_string.replace('</body>', f'{js}</body>')
+            rendered = html_string.replace('{%app_entry%}', app._generate_scripts_html())
+            
+        # Method 2: Fallback to simpler approach
+        except Exception as inner_e:
+            logger.warning(f"Using fallback HTML generation method: {inner_e}")
+            from dash import html as dash_html
+            
+            # Create a basic HTML structure
+            rendered = f'''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Virus Coverage Report</title>
+                <style>
+                    @font-face {{
+                        font-family: "Sparks-Bar-Medium";
+                        src: url("https://cdn.jsdelivr.net/gh/aftertheflood/sparks@9.0.0/output/assets/fonts/Sparks-Bar-Medium.woff2") format("woff2");
+                        font-weight: normal;
+                        font-style: normal;
+                    }}
+                    body {{
+                        font-family: Arial, sans-serif;
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }}
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+                    }}
+                    th {{
+                        background-color: #f2f2f2;
+                        color: #333;
+                        font-weight: bold;
+                        text-align: left;
+                        padding: 12px 15px;
+                        border-bottom: 1px solid #ddd;
+                    }}
+                    td {{
+                        padding: 10px 15px;
+                        border-bottom: 1px solid #ddd;
+                    }}
+                    tr:nth-child(even) {{
+                        background-color: #f9f9f9;
+                    }}
+                    .bar-medium {{
+                        font-family: "Sparks-Bar-Medium";
+                        font-size: 18px;
+                        letter-spacing: 1px;
+                        background-color: #fff;
+                    }}
+                </style>
+            </head>
+            <body>
+                {app.layout.to_plotly_json()}
+            </body>
+            </html>
+            '''
         
         # Write the HTML file
         with open(output_html, 'w') as f:
