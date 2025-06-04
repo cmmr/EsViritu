@@ -480,20 +480,48 @@ def esviritu():
     logger.info(assem_of)
 
     # make the html interactive table with sparklines
-    html_f = os.path.join(
-        args.OUTPUT_DIR,
-        f"{str(args.SAMPLE)}_virus_report.html"
-    )
+    #html_f = os.path.join(
+    #    args.OUTPUT_DIR,
+    #    f"{str(args.SAMPLE)}_virus_report.html"
+    #)
 
     # Apply the timed_function decorator to the report generation
-    make_report_fn = timed_function(logger=logger)(repf.make_dash_aggrid_html_report)
-    html_f = make_report_fn(
-        windows_cov_df,
-        main_out_df,
-        html_f
-    )
+    #make_report_fn = timed_function(logger=logger)(repf.make_dash_aggrid_html_report)
+    #html_f = make_report_fn(
+    #    windows_cov_df,
+    #    main_out_df,
+    #    html_f
+    #)
     
-    logger.info(html_f)
+    #logger.info(html_f)
+
+    # read comparison of contigs
+    contig_read_sharing_table_fn = timed_function(logger=logger)(esvf.contig_read_sharing_table)
+
+    ## initial bam
+    initial_read_comp_df = contig_read_sharing_table_fn(
+        initial_map_bam
+    ),
+    i_read_comp_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.initial_read_comp_compare.tsv"
+    )
+    initial_read_comp_df.write_csv(
+        file = i_read_comp_of,
+        separator = "\t"
+    )
+    ## second bam
+    second_read_comp_df = contig_read_sharing_table_fn(
+        second_map_bam
+    ),
+    sec_read_comp_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.second_read_comp_compare.tsv"
+    )
+    second_read_comp_df.write_csv(
+        file = sec_read_comp_of,
+        separator = "\t"
+    )
 
 
 if __name__ == "__main__":

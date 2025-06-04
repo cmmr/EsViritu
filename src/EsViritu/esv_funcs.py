@@ -779,5 +779,54 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
 
     return output_fasta
 
+## read-based clustering function
+
+def contig_read_sharing_table(bam_path):
+    """
+    For a given BAM file, filter out contigs with no aligned reads, then compare each pair of contigs based on how many read IDs they share (primary or secondary alignments).
+    Returns a polars DataFrame with contig pairs, number of shared reads, and share of total reads for each contig.
+    """
+
+    bamfile = pysam.AlignmentFile(bam_path, "rb")
+    # Step 1: Collect read IDs for each contig
+    contig_reads = defaultdict(set)
+    for read in bamfile.fetch(until_eof=True):
+        if read.is_unmapped:
+            continue
+        contig = bamfile.get_reference_name(read.reference_id)
+        contig_reads[contig].add(read.query_name)
+        # Also add for secondary alignments
+        if read.has_tag("SA"):
+            contig_reads[contig].add(read.query_name)
+    bamfile.close()
+    # Step 2: Filter out contigs with no reads
+    contig_reads = {k: v for k, v in contig_reads.items() if v}
+    contigs = list(contig_reads.keys())
+    # Step 3: Compare every pair of contigs
+    records = []
+    for i, a in enumerate(contigs):
+        reads_a = contig_reads[a]
+        for j in range(i+1, len(contigs)):
+            b = contigs[j]
+            reads_b = contig_reads[b]
+            shared = reads_a & reads_b
+            if shared:
+                n_shared = len(shared)
+                share_a = n_shared / len(reads_a) if reads_a else 0.0
+                share_b = n_shared / len(reads_b) if reads_b else 0.0
+                tot_a = len(reads_a) if reads_a else 0.0
+                tot_b = len(reads_b) if reads_b else 0.0
+                records.append({
+                    "contig_a": a,
+                    "contig_b": b,
+                    "total_reads_a": tot_a,
+                    "total_reads_a": tot_b,
+                    "n_shared_reads": n_shared,
+                    "share_of_a": share_a,
+                    "share_of_b": share_b
+                })
+    return pl.DataFrame(records)
+
+
 ## Compare consensus .fastas to reference .fastas
 ## Make reactable (or python-based version?)
