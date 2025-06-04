@@ -33,7 +33,7 @@ def make_dash_aggrid_html_report(windows: 'pl.DataFrame', meta: 'pl.DataFrame', 
 
     # Group windows by Accession, flatten average_coverage to cov_list
     grouped = (
-        windows.groupby('Accession')
+        windows.group_by('Accession')
         .agg([
             pl.col('average_coverage').list().alias('cov_list')
         ])
