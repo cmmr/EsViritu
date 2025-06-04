@@ -246,15 +246,26 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
     """
     Takes a sorted BAM file and sample name and generates a table with:
     contig length, covered bases, read count, and mean coverage for each contig.
+    Efficiently skips contigs without alignments.
     Returns a polars DataFrame.
     """
-
-
     # Open the sorted BAM file
     bamfile = pysam.AlignmentFile(bam_path, "rb")
     
+    # First, identify contigs that have alignments
+    contigs_with_reads = set()
+    for read in bamfile.fetch():
+        contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
+    
+    # Reset file pointer
+    bamfile.reset()
+    
     records = []
     for contig in bamfile.header.references:
+        # Skip contigs without alignments
+        if contig not in contigs_with_reads:
+            continue
+            
         length = bamfile.header.get_reference_length(contig)
         # Use pileup to get per-base coverage
         coverage = [0] * length
@@ -266,15 +277,15 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         mean_cov = sum(coverage) / length if length > 0 else 0
         # Read count for contig
         read_count = bamfile.count(contig=contig)
-        if read_count >= 1:
-            records.append({
-                "sample": sample,
-                "Accession": contig,
-                "contig_length": length,
-                "covered_bases": covered_bases,
-                "read_count": read_count,
-                "mean_coverage": mean_cov
-            })
+        
+        records.append({
+            "sample": sample,
+            "Accession": contig,
+            "contig_length": length,
+            "covered_bases": covered_bases,
+            "read_count": read_count,
+            "mean_coverage": mean_cov
+        })
     bamfile.close()
 
     return pl.DataFrame(records)
@@ -721,6 +732,7 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
     Generates a consensus FASTA sequence from a BAM file by examining the pileup at each position.
     For each position, the most frequent base is chosen.
     Writes the consensus sequences for each contig to the specified output FASTA file.
+    Skips contigs with no aligned reads for efficiency.
     
     Args:
         bam_path: Path to the input BAM file.
@@ -730,9 +742,21 @@ def pileup_consensus(bam_path: str, output_fasta: str) -> str:
         The path to the output FASTA file containing the consensus sequences.
     """
     bamfile = pysam.AlignmentFile(bam_path, "rb")
-
+    
+    # First, identify contigs that have alignments
+    contigs_with_reads = set()
+    for read in bamfile.fetch():
+        contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
+    
+    # Reset file pointer
+    bamfile.reset()
+    
     with open(output_fasta, 'w') as outf:
         for contig in bamfile.header.references:
+            # Skip contigs without alignments
+            if contig not in contigs_with_reads:
+                continue
+                
             con_seq = []
             for pileupcolumn in bamfile.pileup(contig, stepper="nofilter"):
                 base_counts = Counter()
