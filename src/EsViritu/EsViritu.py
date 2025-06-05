@@ -499,6 +499,7 @@ def esviritu():
     main_out_df, assem_out_df = assembly_table_maker_fn(
         second_coverm_like_dt,
         vir_meta_df,
+        read_ani_df,
         filtered_reads,
         str(args.SAMPLE)
     )
