@@ -170,6 +170,8 @@ def esviritu():
     logger.propagate = False
     #########################
 
+    esvf.print_esviritu_banner()
+    
     if str(args.TEMP_DIR) == "default":
         args.TEMP_DIR = os.path.join(
             args.OUTPUT_DIR,
@@ -215,9 +217,6 @@ def esviritu():
         args.FILTER_DIR = os.getenv('ESVIRITU_FILTER')
     elif args.FILTER_DIR == "default":
         args.FILTER_DIR = esviritu_script_path.replace("src/EsViritu", "filter_seqs")
-    
-
-    esvf.print_esviritu_banner()
     
     logger.info(f"DB: {str(args.DB)}")
 

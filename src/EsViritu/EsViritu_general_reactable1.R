@@ -93,8 +93,8 @@ if (is_dataui == TRUE) {
         ),
         avg_read_identity = colDef(
           name = "Average Read Identity",
-          maxWidth = 100,
-          style = color_scales(., colors = c("#e73a3a", "#086bd4"), bias = 2),
+          maxWidth = 80,
+          style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
           format = colFormat(percent = TRUE, digits = 1)
         ),
         coverage = colDef(
@@ -149,6 +149,12 @@ if (is_dataui == TRUE) {
           maxWidth = 150,
           style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
           format = colFormat(digits = 2)
+        ),
+        avg_read_identity = colDef(
+          name = "Average Read Identity",
+          maxWidth = 80,
+          style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
+          format = colFormat(percent = TRUE, digits = 1)
         )
       )) %>% 
     add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
