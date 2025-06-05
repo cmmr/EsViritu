@@ -19,6 +19,17 @@ classifiers = [
 dependencies = [
     "numpy",    
     "biopython",
+    "polars",
+    "pysam",
+    "logging-utils",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "flake8",
 ]
 
 [tool.setuptools.packages.find]
