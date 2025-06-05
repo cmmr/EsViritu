@@ -50,9 +50,9 @@ combined_data <- merge(genome_data, sum_coverage, by = "Accession") %>%
   )
   ) %>%
   mutate(
-    genus = gsub("^g__", genus),
-    species = gsub("^s__", species),
-    subspecies = gsub("^t__", subspecies)
+    genus = gsub("^g__", "", genus),
+    species = gsub("^s__", "", species),
+    subspecies = gsub("^t__", "", subspecies)
   )
 
 ## check for dataui
@@ -107,8 +107,6 @@ if (is_dataui == TRUE) {
             labels = c("max"),
             statline = "min",
             statline_color = "black"
-            #bandline = "innerquartiles",
-            #bandline_color = "darkgreen"
           )))) %>% 
     add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
     add_subtitle(
