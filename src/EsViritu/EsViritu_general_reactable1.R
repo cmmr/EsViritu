@@ -34,9 +34,6 @@ genome_data <- fread(args[2], sep = "\t", header = TRUE)
 
 
 #coverage_data
-
-coverage_data$mean_depth <- round(coverage_data$mean_depth)
-
 sum_coverage <- coverage_data %>%
   mutate(average_coverage = ceiling(average_coverage)) %>%
   group_by(Accession) %>%
