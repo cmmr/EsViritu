@@ -4,6 +4,7 @@ suppressMessages(suppressWarnings(library(reactable)))
 suppressMessages(suppressWarnings(library(htmltools)))
 suppressMessages(suppressWarnings(library(reactablefmtr)))
 suppressMessages(suppressWarnings(library(scales)))
+suppressMessages(suppressWarnings(library(magrittr)))
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -52,15 +53,13 @@ combined_data$subspecies <- sub("^t__", "", combined_data$subspecies)
 
 magma_colors <- c("#F6E620", "#F98E09", "#E14E0E", "#8B0A50", "#000004")
 
-options(warn = 0)               # Turn warnings ON (0 = print as they occur)
-
 ## check for dataui
 is_dataui <- require(dataui)
 
 if (is_dataui == TRUE) {
   suppressMessages(library(dataui))
   
-  nice_table <- combined_data |>
+  nice_table <- combined_data %>%
     reactable(
       .,
       pagination = TRUE,
@@ -106,19 +105,19 @@ if (is_dataui == TRUE) {
             labels = c("max"),
             statline = "min",
             statline_color = "black"
-          )))) |> 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) |>
+          )))) %>% 
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
     add_subtitle(
       sprintf(
         "Generated at %s | %s filtered reads in sample",
         format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
       )
-    ) |>
+    ) %>%
     google_font(font_family = "Oswald")
   
 } else {
-  nice_table <- combined_data |>
-    select(-coverage) |>
+  nice_table <- combined_data %>%
+    select(-coverage) %>%
     reactable(
       .,
       pagination = TRUE,
@@ -145,18 +144,18 @@ if (is_dataui == TRUE) {
           style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
           format = colFormat(digits = 2)
         )
-      )) |> 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) |>
+      )) %>% 
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
     add_subtitle(
       sprintf(
         "Generated at %s | %s filtered reads in sample",
         format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
       )
-    ) |>
+    ) %>%
     google_font(font_family = "Oswald")
   
 }
 
-nice_table |> save_reactable_test(
+nice_table %>% save_reactable_test(
   sprintf("%s/%s_EsViritu_reactable.html", args[3], args[4])
 )

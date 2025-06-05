@@ -24,5 +24,6 @@ dependencies:
   - r-scales
   - r-reactable
   - r-reactablefmtr
+  - r-magrittr
   # Optionally, if you use dataui in some cases:
   - r-remotes
