@@ -840,7 +840,8 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
     records = []
     for i, a in enumerate(assemblies):
         reads_a = assembly_reads[a]
-        for j in range(i+1, len(assemblies)):
+        # this will do a self-self comparison so contigs without any sharing don't get missed
+        for j in range(i, len(assemblies)):
             b = assemblies[j]
             reads_b = assembly_reads[b]
             shared = reads_a & reads_b
@@ -927,7 +928,51 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
             })
     return pl.DataFrame(records)
 
+## read ANI function
+
+def read_ani_from_bam(bam_path):
+    """
+    Calculate average read identity (ANI) and alignment length for each contig in a BAM file.
+    Returns a polars DataFrame with columns: contig, avg_identity, avg_align_len, n_reads
+    """
+    import pysam
+    import polars as pl
+    from collections import defaultdict
+
+    contig_identity_sum = defaultdict(float)
+    contig_align_len_sum = defaultdict(int)
+    contig_read_count = defaultdict(int)
+
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        for read in bam.fetch(until_eof=True):
+            if read.is_unmapped or read.reference_id is None:
+                continue
+            contig = bam.get_reference_name(read.reference_id)
+            align_len = read.query_alignment_length
+            nm = read.get_tag("NM") if read.has_tag("NM") else None
+            if nm is not None and align_len > 0:
+                identity = (align_len - nm) / align_len
+            else:
+                # fallback: identity unknown, skip
+                continue
+            contig_identity_sum[contig] += identity
+            contig_align_len_sum[contig] += align_len
+            contig_read_count[contig] += 1
+
+    records = []
+    for contig in contig_read_count:
+        n = contig_read_count[contig]
+        avg_identity = contig_identity_sum[contig] / n if n else 0.0
+        avg_align_len = contig_align_len_sum[contig] / n if n else 0.0
+        records.append({
+            "contig": contig,
+            "avg_identity": avg_identity,
+            "avg_align_len": avg_align_len,
+            "n_reads": n
+        })
+    return pl.DataFrame(records)
 
 
 ## Compare consensus .fastas to reference .fastas
-## Make reactable (or python-based version?)
+### or calculate average read ANI,
+### declare ambiguity for high divergence

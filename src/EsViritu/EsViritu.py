@@ -511,7 +511,7 @@ def esviritu():
 
     assem_of = os.path.join(
         str(args.OUTPUT_DIR),
-        f"{str(args.SAMPLE)}.detected_virus.assembly_summary.json"
+        f"{str(args.SAMPLE)}.detected_virus.assembly_summary.tsv"
     )
     assem_out_df.write_csv(
         file = assem_of,
@@ -544,6 +544,20 @@ def esviritu():
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     logger.info(f"reactable report finished in {elapsed_time}")
+
+    # get read ANI per contig
+    read_ani_df = esvf.read_ani_from_bam(
+        second_map_bam
+    ),
+
+    rani_of = os.path.join(
+        args.TEMP_DIR,
+        f"{str(args.SAMPLE)}.read_ani.per_contig.tsv"
+    )
+    read_ani_df.write_csv(
+        file = rani_of,
+        separator = "\t"
+    )
 
 if __name__ == "__main__":
     esviritu()
