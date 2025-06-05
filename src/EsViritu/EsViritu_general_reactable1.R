@@ -2,13 +2,8 @@
 
 suppressMessages(suppressWarnings(library(reactable)))
 suppressMessages(suppressWarnings(library(htmltools)))
-suppressMessages(suppressWarnings(library(dplyr)))
 suppressMessages(suppressWarnings(library(reactablefmtr)))
-suppressMessages(suppressWarnings(library(data.table)))
-suppressMessages(suppressWarnings(library(RColorBrewer)))
-suppressMessages(suppressWarnings(library(viridis)))
 suppressMessages(suppressWarnings(library(scales)))
-suppressMessages(suppressWarnings(library(knitr)))
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -23,37 +18,41 @@ if (length(args) != 5) {
     call. = FALSE
   )
 }
-
-coverage_data <- fread(
+coverage_data <- read.table(
   args[1],
   sep = "\t",
   header = TRUE,
+  stringsAsFactors = FALSE
 )
+genome_data <- read.table(
+  args[2],
+  sep = "\t",
+  header = TRUE, 
+  stringsAsFactors = FALSE
+)
+coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
+sum_coverage <- aggregate(
+  average_coverage ~ Accession,
+  data = coverage_data,
+  FUN = function(x) list(x)
+)
+names(sum_coverage)[2] <- "coverage"
+combined_data <- merge(genome_data, sum_coverage, by = "Accession")
+combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
+keep <- c(
+  "Name", "Accession", "Assembly",
+  "Length", "Percent_covered", "RPKMF",
+  "read_count", "genus", "species",
+  "subspecies", "coverage"
+)
+combined_data <- combined_data[, keep]
+combined_data$genus <- sub("^g__", "", combined_data$genus)
+combined_data$species <- sub("^s__", "", combined_data$species)
+combined_data$subspecies <- sub("^t__", "", combined_data$subspecies)
 
-genome_data <- fread(args[2], sep = "\t", header = TRUE)
+magma_colors <- c("#F6E620", "#F98E09", "#E14E0E", "#8B0A50", "#000004")
 
-
-#coverage_data
-sum_coverage <- coverage_data %>%
-  mutate(average_coverage = ceiling(average_coverage)) %>%
-  group_by(Accession) %>%
-  summarize(coverage = list(average_coverage))
-
-
-
-combined_data <- merge(genome_data, sum_coverage, by = "Accession") %>%
-  mutate(Percent_covered = covered_bases / Length) %>%
-  select(c(
-    "Name", "Accession", "Assembly", "Length",
-    "Percent_covered", "RPKMF", "read_count",
-    "genus", "species", "subspecies", "coverage"
-  )
-  ) %>%
-  mutate(
-    genus = gsub("^g__", "", genus),
-    species = gsub("^s__", "", species),
-    subspecies = gsub("^t__", "", subspecies)
-  )
+options(warn = 0)               # Turn warnings ON (0 = print as they occur)
 
 ## check for dataui
 is_dataui <- require(dataui)
@@ -77,7 +76,7 @@ if (is_dataui == TRUE) {
           name = "% Covered",
           cell = data_bars(
             data = .,
-            fill_color = viridis::magma(5, direction = -1),
+            fill_color = magma_colors,
             background = '#F1F1F1',
             min_value = 0,
             max_value = 1,
@@ -89,8 +88,8 @@ if (is_dataui == TRUE) {
         
         RPKMF = colDef(
           name = "RPKMF\nReads per Kilobase\nper Million Filtered Reads",
-          maxWidth = 100, 
-          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
+          maxWidth = 150,
+          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2),
           format = colFormat(digits = 2)
         ),
         coverage = colDef(
@@ -131,7 +130,7 @@ if (is_dataui == TRUE) {
         Percent_covered = colDef(
           cell = data_bars(
             data = .,
-            fill_color = viridis::magma(5, direction = -1),
+            fill_color = magma_colors,
             background = '#F1F1F1',
             min_value = 0,
             max_value = 1,
@@ -142,7 +141,7 @@ if (is_dataui == TRUE) {
         ),
         
         RPKMF = colDef(
-          maxWidth = 100, 
+          maxWidth = 150,
           style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
           format = colFormat(digits = 2)
         )

@@ -610,36 +610,18 @@ def final_record_getter(aniclust_tsv: str, field: int, vir_info_df: pl.DataFrame
     os.remove(acc_file_path)
     return output_fasta
 
-## Make the main output table
-def main_table_maker(df1: pl.DataFrame, df2: pl.DataFrame, filtered_reads: int, sample: str) -> pl.DataFrame:
-    """
-    Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
-    RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
-    Args:
-        df1: polars DataFrame (must have 'Accession', 'read_count', 'contig_length')
-        df2: polars DataFrame (must have 'Accession' and any columns to merge)
-        filtered_reads: total filtered reads (int)
-    Returns:
-        Merged DataFrame with RPKMF column.
-    """
-    merged = df1.join(df2, on="Accession", how="inner")
-    merged = merged.with_columns([
-        (pl.col("read_count") / (pl.col("contig_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
-        pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
-        pl.lit(sample).alias("sample_ID")
-    ])
-    return merged
 
-## Make the assembly-based output table
+## Make the main table and assembly-based output table
 def assembly_table_maker(
-    df1: pl.DataFrame, df2: pl.DataFrame, 
+    df1: pl.DataFrame, df2: pl.DataFrame, read_ani_df: pl.DataFrame,
     filtered_reads: int, sample: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
     """
-    Merge two polars DataFrames on 'Accession' and add an 'RPKMF' column.
+    Merge three polars DataFrames on 'Accession' and add an 'RPKMF' column.
     RPKMF = (read_count / (contig_length / 1000)) / (filtered_reads / 1e6)
     Args:
         df1: polars DataFrame (must have 'Accession', 'read_count', 'contig_length')
         df2: polars DataFrame (must have 'Accession' and any columns to merge)
+        read_ani_df: polars DataFrame (must have 'Accession' and any columns to merge)
         filtered_reads: total filtered reads (int)
         sample: sample_ID for run
     Returns:
@@ -661,11 +643,20 @@ def assembly_table_maker(
         pl.lit(filtered_reads).alias("filtered_reads_in_sample"),
         pl.lit(sample).alias("sample_ID")
     ])
+
+    merged2 = merged.join(
+        read_ani_df, on="Accession", how="left"
+    ).select([
+        "sample_ID", "Name", "description", "Segment", "Accession", "Assembly",
+        "Asm_length", "kingdom", "phylum", "tclass", "order",
+        "family", "genus", "species", "subspecies", "read_count",
+        "covered_bases", "mean_coverage", "avg_read_identity", "filtered_reads_in_sample"
+    ])
     # for the output "main" table we only want records with 1 or more reads
-    merged_out = merged.filter(pl.col("read_count") >= 1)
+    merged_out = merged2.filter(pl.col("read_count") >= 1)
 
     # Group/summarize by assembly (for segmented viruses)
-    assem_df = merged.group_by(
+    assem_df = merged2.group_by(
         ["sample_ID", "filtered_reads_in_sample", "Assembly", 
         "Asm_length", "kingdom", "phylum", "tclass", "order", 
         "family", "genus", "species", "subspecies"] 
@@ -933,7 +924,7 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
 def read_ani_from_bam(bam_path):
     """
     Calculate average read identity (ANI) and alignment length for each contig in a BAM file.
-    Returns a polars DataFrame with columns: contig, avg_identity, avg_align_len, n_reads
+    Returns a polars DataFrame with columns: Accession, avg_read_identity, avg_align_len, n_reads
     """
     import pysam
     import polars as pl
@@ -965,8 +956,8 @@ def read_ani_from_bam(bam_path):
         avg_identity = contig_identity_sum[contig] / n if n else 0.0
         avg_align_len = contig_align_len_sum[contig] / n if n else 0.0
         records.append({
-            "contig": contig,
-            "avg_identity": avg_identity,
+            "Accession": contig,
+            "avg_read_identity": avg_identity,
             "avg_align_len": avg_align_len,
             "n_reads": n
         })

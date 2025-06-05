@@ -302,6 +302,7 @@ def esviritu():
 
     logger.info(initial_map_bam)
 
+    """
     # Make coverm-like table from initial bam
     bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
     init_coverm_like_dt = bam_to_coverm_table_fn(
@@ -316,14 +317,6 @@ def esviritu():
         ),
         separator = "\t"
     )
-
-    # Load virus info metadata table in polars
-
-    vir_meta_df = pl.read_csv(
-        db_metadata, 
-        separator='\t',
-        schema_overrides={"TaxID": pl.String}
-        )
 
     # make consensus .fasta from initial alignment
     pileup_consensus_fn = timed_function(logger=logger)(esvf.pileup_consensus)
@@ -344,7 +337,7 @@ def esviritu():
     )
 
 
-    """
+
     # compare initial consensus seqs to each other
     ## blastn method
     blastn_self_compare_fn = timed_function(logger=logger)(esvf.blastn_self_compare)
@@ -383,6 +376,14 @@ def esviritu():
 
     logger.info(aniclust_bn_f)
     """
+
+    # Load virus info metadata table in polars
+    vir_meta_df = pl.read_csv(
+        db_metadata, 
+        separator='\t',
+        schema_overrides={"TaxID": pl.String}
+        )
+
     ## new read-based clustering
     asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
     initial_read_comp_df = asm_read_sharing_table_fn(
@@ -410,7 +411,7 @@ def esviritu():
         separator = "\t"
     )
 
-    ## make new fasta file from aniclust exemplars
+    ## make new fasta file database from aniclust exemplars
     final_record_getter_fn = timed_function(logger=logger)(esvf.final_record_getter)
     clust_db_fasta = final_record_getter_fn(
         i_read_clust_of,
@@ -454,8 +455,6 @@ def esviritu():
         str(args.SAMPLE)
     )
 
-    logger.info(second_coverm_like_dt)
-
     second_coverm_like_dt.write_csv(
         file = os.path.join(
             args.TEMP_DIR,
@@ -469,7 +468,6 @@ def esviritu():
     windows_cov_df = bam_coverage_windows_fn(
         second_map_bam
     )
-    logger.info(windows_cov_df)
 
     windows_of = os.path.join(
         args.OUTPUT_DIR,
@@ -481,6 +479,20 @@ def esviritu():
         separator = "\t"
     )
 
+    # get read ANI per contig
+    read_ani_df = esvf.read_ani_from_bam(
+        second_map_bam
+    )
+    rani_of = os.path.join(
+        args.TEMP_DIR,
+        f"{str(args.SAMPLE)}.read_ani.per_contig.tsv"
+    )
+    read_ani_df.write_csv(
+        file = rani_of,
+        separator = "\t"
+    )
+    logger.info(read_ani_df)
+
     ## Make "main" and "assembly" output table
 
     assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
@@ -490,11 +502,6 @@ def esviritu():
         filtered_reads,
         str(args.SAMPLE)
     )
-    logger.info(main_out_df.schema)
-    logger.info(main_out_df)
-
-    logger.info(assem_out_df.schema)
-    logger.info(assem_out_df)
 
     main_of = os.path.join(
         str(args.OUTPUT_DIR),
@@ -541,20 +548,7 @@ def esviritu():
         raise
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
-    logger.info(f"reactable report finished in {elapsed_time}")
-
-    # get read ANI per contig
-    read_ani_df = esvf.read_ani_from_bam(
-        second_map_bam
-    )
-    rani_of = os.path.join(
-        args.TEMP_DIR,
-        f"{str(args.SAMPLE)}.read_ani.per_contig.tsv"
-    )
-    read_ani_df.write_csv(
-        file = rani_of,
-        separator = "\t"
-    )
+    logger.info(f"reactable report finished in {elapsed_time} seconds")
 
 if __name__ == "__main__":
     esviritu()
