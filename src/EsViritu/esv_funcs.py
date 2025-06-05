@@ -965,7 +965,16 @@ def read_ani_from_bam(bam_path):
         })
     return pl.DataFrame(records)
 
-
+def print_esviritu_banner():
+    print(r"""
+ _____   _____ __      __ _____  _____   _____  _______ _    _ 
+| ____| / ____|\ \    / /|_   _||  __ \ |_   _||__   __| |  | |
+| |__  | (_     \ \  / /   | |  | |__) |  | |     | |  | |  | |
+|  __|  \___ \   \ \/ /    | |  |  _  /   | |     | |  | |  | |
+| |___  ____) |   \  /    _| |_ | | \ \ _ | |_    | |  | |__| |
+|_____| |____/     \/    |_____||_|  \_\|_____|   |_|   \____/ 
+                                                                 
+""")
 ## Compare consensus .fastas to reference .fastas
 ### or calculate average read ANI,
 ### declare ambiguity for high divergence

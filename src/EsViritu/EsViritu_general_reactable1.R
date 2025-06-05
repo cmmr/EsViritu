@@ -43,8 +43,8 @@ combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Len
 keep <- c(
   "Name", "Accession", "Assembly",
   "Length", "Percent_covered", "RPKMF",
-  "read_count", "genus", "species",
-  "subspecies", "coverage"
+  "read_count", "avg_read_identity", "genus",
+  "species", "subspecies", "coverage"
 )
 combined_data <- combined_data[, keep]
 combined_data$genus <- sub("^g__", "", combined_data$genus)
@@ -90,6 +90,12 @@ if (is_dataui == TRUE) {
           maxWidth = 150,
           style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2),
           format = colFormat(digits = 2)
+        ),
+        avg_read_identity = colDef(
+          name = "Average Read Identity",
+          maxWidth = 100,
+          style = color_scales(., colors = c("#e73a3a", "#086bd4"), bias = 2),
+          format = colFormat(percent = TRUE, digits = 1)
         ),
         coverage = colDef(
           filterable = FALSE,

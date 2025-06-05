@@ -7,6 +7,7 @@ import subprocess
 import yaml
 import logging
 import polars as pl
+import shutil
 try:
     from . import esv_funcs as esvf
     from .utils.timing import timed_function
@@ -216,6 +217,8 @@ def esviritu():
         args.FILTER_DIR = esviritu_script_path.replace("src/EsViritu", "filter_seqs")
     
 
+    esvf.print_esviritu_banner()
+    
     logger.info(f"DB: {str(args.DB)}")
 
     logger.info(f"filter seqs: {str(args.FILTER_DIR)}")
@@ -301,81 +304,6 @@ def esviritu():
     )
 
     logger.info(initial_map_bam)
-
-    """
-    # Make coverm-like table from initial bam
-    bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
-    init_coverm_like_dt = bam_to_coverm_table_fn(
-        initial_map_bam,
-        str(args.SAMPLE)
-    )
-
-    init_coverm_like_dt.write_csv(
-        file = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_initial_coverm.tsv"
-        ),
-        separator = "\t"
-    )
-
-    # make consensus .fasta from initial alignment
-    pileup_consensus_fn = timed_function(logger=logger)(esvf.pileup_consensus)
-    initial_consensus = pileup_consensus_fn(
-        initial_map_bam,
-        os.path.join(
-            args.TEMP_DIR,
-            f"{args.SAMPLE}.prelim.consensus.fasta"
-        )
-    )
-
-    logger.info(initial_consensus)
-
-    concat_asm_accessions_fn = timed_function(logger=logger)(esvf.concat_asm_accessions)
-    init_assembly_concat = concat_asm_accessions_fn(
-        initial_consensus,
-        vir_meta_df
-    )
-
-
-
-    # compare initial consensus seqs to each other
-    ## blastn method
-    blastn_self_compare_fn = timed_function(logger=logger)(esvf.blastn_self_compare)
-    pairwise_bn_initial_dt = blastn_self_compare_fn(
-        init_assembly_concat,
-        str(args.CPU)
-    )
-
-    anicalc_bn_f = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_bn_anicalc.tsv"
-        )
-    pairwise_bn_initial_dt.write_csv(
-        file = anicalc_bn_f,
-        separator = "\t"
-    )
-    logger.info(anicalc_bn_f)
-
-    # Run aniclust.py
-    aniclust_bn_f = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_bn_aniclust.tsv"
-        )
-    aniclustpy_path = os.path.join(os.path.dirname(__file__), 'utils', 'aniclust.py')
-    clustcmd = [
-        sys.executable, aniclustpy_path, 
-        '--fna', init_assembly_concat, 
-        '--ani', anicalc_bn_f, 
-        '--out', aniclust_bn_f,
-        '--min_ani', str(98), 
-        '--min_qcov', str(50), 
-        '--min_tcov', str(0), 
-        '--min_length', str(0)
-        ]
-    subprocess.run(clustcmd, check=True)
-
-    logger.info(aniclust_bn_f)
-    """
 
     # Load virus info metadata table in polars
     vir_meta_df = pl.read_csv(
@@ -550,6 +478,17 @@ def esviritu():
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     logger.info(f"reactable report finished in {elapsed_time} seconds")
+
+    # optionally removing temporary files
+    if args.KEEP:
+        logger.info(f"keeping temp files in {args.TEMP_DIR}")
+    else:
+        try:
+            if os.path.isdir(args.TEMP_DIR):
+                shutil.rmtree(args.TEMP_DIR)
+                logger.info(f"Removed temporary directory {args.TEMP_DIR}")
+        except Exception as e:
+            logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
 
 if __name__ == "__main__":
     esviritu()
