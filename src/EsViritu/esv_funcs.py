@@ -675,11 +675,16 @@ def assembly_table_maker(
         #covered_bases
         pl.col("covered_bases").sum().alias("covered_bases"),
         #Accessions
-        pl.col("Accession").flatten().cast(pl.List(pl.Utf8)).list.join(", "),
+        pl.col("Accession").flatten(),
         #Segments
-        pl.col("Segment").flatten().cast(pl.List(pl.Utf8)).list.join(", "),
+        pl.col("Segment").flatten(),
     ).with_columns(
-        (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF")
+        (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
+        pl.col("Accession").list.eval(pl.element().cast(pl.String)),
+        pl.col("Segment").list.eval(pl.element().cast(pl.String))
+    ).with_columns(
+        pl.col("Accession").list.join(","),
+        pl.col("Segment").list.join(",")
     ).filter(pl.col("read_count") >= 1)
 
 

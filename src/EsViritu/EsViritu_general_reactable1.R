@@ -4,23 +4,31 @@ suppressMessages(library(reactable))
 suppressMessages(library(htmltools))
 suppressMessages(library(dplyr))
 suppressMessages(library(reactablefmtr))
-#suppressMessages(library(dataui))
 suppressMessages(library(data.table))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(viridis))
 suppressMessages(library(scales))
 suppressMessages(library(knitr))
 
-args = commandArgs(trailingOnly=TRUE)
+args = commandArgs(trailingOnly = TRUE)
 
-if (length(args)!=4) {
-  stop("Four arguments must be supplied (coverage_bed.tsv, then coverm.threshold.info.tsv, output directory, then sample ID).n", call.=FALSE)
-} else if (length(args)==4) {
-  # default output file
-  sprintf("arguments found. Running.")
-}
+if (length(args)!= 5) {
+  stop(
+    "Four arguments must be supplied:
+    coverage windows tsv, 
+    then main table tsv, 
+    output directory, 
+    sample_ID,
+    reads_in_sample",
+    call. = FALSE
+  )
+} 
 
-coverage_data <- fread(args[1], sep = "\t", header = FALSE, col.names = c("accession", "start_base", "end_base", "mean_depth"))
+coverage_data <- fread(
+  args[1],
+  sep = "\t",
+  header = TRUE,
+)
 
 genome_data <- fread(args[2], sep = "\t", header = TRUE)
 
@@ -29,18 +37,21 @@ genome_data <- fread(args[2], sep = "\t", header = TRUE)
 
 coverage_data$mean_depth <- round(coverage_data$mean_depth)
 
-sum_coverage <- coverage_data %>% 
-  #group_by(accession, grp = as.integer(gl(n(), 100, n()))) %>% 
-  #summarise(mean = mean(coverage), n = n())
-  group_by(accession) %>%
-  summarize(coverage = list(mean_depth)) 
+sum_coverage <- coverage_data %>%
+  mutate(average_coverage = ceiling(average_coverage)) %>%
+  group_by(Accession) %>%
+  summarize(coverage = list(average_coverage))
 
 
 
-combined_data <- merge(genome_data, sum_coverage, by = "accession")
-combined_data$Percent_covered <- combined_data$covered_bases / combined_data$reference_length
-
-combined_data <- subset(combined_data, select = c("sequence_name", "accession", "reference_length", "Percent_covered", "RPKMF", "reads_aligned", "genus", "species", "subspecies", "coverage"))
+combined_data <- merge(genome_data, sum_coverage, by = "Accession") %>%
+  mutate(Percent_covered = covered_bases / Length) %>%
+  select(c(
+    "Name", "Accession", "Assembly", "Length",
+    "Percent_covered", "RPKMF", "read_count",
+    "genus", "species", "subspecies", "coverage"
+  )
+  )
 
 ## check for dataui
 is_dataui <- require(dataui)
@@ -92,7 +103,13 @@ if (is_dataui == TRUE) {
             #bandline = "innerquartiles",
             #bandline_color = "darkgreen"
           )))) %>% 
-    add_title(sprintf("%s Detected virus Summary", args[4])) %>%
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
+    add_subtitle(
+      sprintf(
+        "Generated at %s | filtered reads in sample: %s",
+        format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
+      )
+    ) %>%
     google_font(font_family = "Oswald")
   
 } else {
@@ -125,9 +142,17 @@ if (is_dataui == TRUE) {
           format = colFormat(digits = 1)
         )
       )) %>% 
-    add_title(sprintf("%s Detected virus Summary", args[4])) %>%
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
+    add_subtitle(
+      sprintf(
+        "Generated at %s | filtered reads in sample: %s",
+        format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
+      )
+    ) %>%
     google_font(font_family = "Oswald")
   
 }
 
-nice_table %>% save_reactable_test(sprintf("%s/%s_EsViritu_reactable.html", args[3], args[4]))
+nice_table %>% save_reactable_test(
+  sprintf("%s/%s_EsViritu_reactable.html", args[3], args[4])
+)

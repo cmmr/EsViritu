@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import time
 import sys, os
 import subprocess
 import yaml
@@ -344,6 +345,8 @@ def esviritu():
         vir_meta_df
     )
 
+
+    """
     # compare initial consensus seqs to each other
     ## blastn method
     blastn_self_compare_fn = timed_function(logger=logger)(esvf.blastn_self_compare)
@@ -381,12 +384,39 @@ def esviritu():
     subprocess.run(clustcmd, check=True)
 
     logger.info(aniclust_bn_f)
+    """
+    ## new read-based clustering
+    asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
+    initial_read_comp_df = asm_read_sharing_table_fn(
+        initial_map_bam,
+        vir_meta_df
+    )
+    i_read_comp_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.initial_read_comp_compare.tsv"
+    )
+    initial_read_comp_df.write_csv(
+        file = i_read_comp_of,
+        separator = "\t"
+    )
+
+    read_clust_init_df = esvf.cluster_assemblies_by_read_sharing(
+        initial_read_comp_df
+    )
+    i_read_clust_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.initial_read_comp_clust.tsv"
+    )
+    read_clust_init_df.write_csv(
+        file = i_read_clust_of,
+        separator = "\t"
+    )
 
     ## make new fasta file from aniclust exemplars
     final_record_getter_fn = timed_function(logger=logger)(esvf.final_record_getter)
     clust_db_fasta = final_record_getter_fn(
-        aniclust_bn_f,
-        0,
+        i_read_clust_of,
+        2,
         vir_meta_df,
         db_fasta,
         os.path.join(
@@ -443,6 +473,16 @@ def esviritu():
     )
     logger.info(windows_cov_df)
 
+    windows_of = os.path.join(
+        args.OUTPUT_DIR,
+        f"{str(args.SAMPLE)}.virus_coverage_windows.tsv"
+    )
+
+    windows_cov_df.write_csv(
+        file = windows_of,
+        separator = "\t"
+    )
+
     ## Make "main" and "assembly" output table
 
     assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
@@ -473,91 +513,38 @@ def esviritu():
         str(args.OUTPUT_DIR),
         f"{str(args.SAMPLE)}.detected_virus.assembly_summary.json"
     )
-    assem_out_df.write_ndjson(
-        file = assem_of
+    assem_out_df.write_csv(
+        file = assem_of,
+        separator = "\t"
     )
 
     logger.info(assem_of)
 
     # make the html interactive table with sparklines
-    #html_f = os.path.join(
-    #    args.OUTPUT_DIR,
-    #    f"{str(args.SAMPLE)}_virus_report.html"
-    #)
 
-    # Apply the timed_function decorator to the report generation
-    #make_report_fn = timed_function(logger=logger)(repf.make_dash_aggrid_html_report)
-    #html_f = make_report_fn(
-    #    windows_cov_df,
-    #    main_out_df,
-    #    html_f
-    #)
-    
-    #logger.info(html_f)
-
-    # read comparison of contigs
-    asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
-
-    ## initial bam
-    initial_read_comp_df = asm_read_sharing_table_fn(
-        initial_map_bam,
-        vir_meta_df
-    )
-    i_read_comp_of = os.path.join(
-        str(args.TEMP_DIR),
-        f"{str(args.SAMPLE)}.initial_read_comp_compare.tsv"
-    )
-    initial_read_comp_df.write_csv(
-        file = i_read_comp_of,
-        separator = "\t"
-    )
-
-    read_clust_init_df = esvf.cluster_assemblies_by_read_sharing(
-        initial_read_comp_df
-    )
-    i_read_clust_of = os.path.join(
-        str(args.TEMP_DIR),
-        f"{str(args.SAMPLE)}.initial_read_comp_clust.tsv"
-    )
-    read_clust_init_df.write_csv(
-        file = i_read_clust_of,
-        separator = "\t"
-    )
-    ## second bam
-    second_read_comp_df = asm_read_sharing_table_fn(
-        second_map_bam,
-        vir_meta_df
-    )
-    sec_read_comp_of = os.path.join(
-        str(args.TEMP_DIR),
-        f"{str(args.SAMPLE)}.second_read_comp_compare.tsv"
-    )
-    second_read_comp_df.write_csv(
-        file = sec_read_comp_of,
-        separator = "\t"
-    )
-    read_clust_sec_df = esvf.cluster_assemblies_by_read_sharing(
-        second_read_comp_df
-    )
-    sec_read_clust_of = os.path.join(
-        str(args.TEMP_DIR),
-        f"{str(args.SAMPLE)}.second_read_comp_clust.tsv"
-    )
-    read_clust_sec_df.write_csv(
-        file = sec_read_clust_of,
-        separator = "\t"
-    )
-    final_record_getter_fn(
-        i_read_clust_of,
-        2,
-        vir_meta_df,
-        db_fasta,
-        os.path.join(
-            str(args.TEMP_DIR),
-            f"{str(args.SAMPLE)}.READ_BASED.clustered_refs.fasta"
+    logger.info(f"generating reactable report...")
+    start_time = time.perf_counter()
+    reactableR_path = os.path.join(
+        os.path.dirname(__file__), 
+        'utils', 
+        'EsViritu_general_reactable1.R'
         )
-    )
-
+    reactablecmd = [
+        'Rscript', reactableR_path,
+        windows_of,
+        main_of,
+        str(args.OUTPUT_DIR),
+        str(args.SAMPLE),
+        str(filtered_reads)
+        ]
+    try:
+        subprocess.run(reactablecmd, check=True)
+    except Exception as e:
+        logger.error(f"report generation failed: {reactablecmd}\nError: {e}")
+        raise
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    logger.info(f"reactable report finished in {elapsed_time}")
 
 if __name__ == "__main__":
     esviritu()
