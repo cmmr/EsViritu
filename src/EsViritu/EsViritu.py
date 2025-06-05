@@ -526,7 +526,6 @@ def esviritu():
     start_time = time.perf_counter()
     reactableR_path = os.path.join(
         os.path.dirname(__file__), 
-        'utils', 
         'EsViritu_general_reactable1.R'
         )
     reactablecmd = [
