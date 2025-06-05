@@ -647,10 +647,12 @@ def assembly_table_maker(
     merged2 = merged.join(
         read_ani_df, on="Accession", how="left"
     ).select([
-        "sample_ID", "Name", "description", "Segment", "Accession", "Assembly",
+        "sample_ID", "Name", "description", "Length",
+        "Segment", "Accession", "Assembly",
         "Asm_length", "kingdom", "phylum", "tclass", "order",
         "family", "genus", "species", "subspecies", "read_count",
-        "covered_bases", "mean_coverage", "avg_read_identity", "filtered_reads_in_sample"
+        "covered_bases", "mean_coverage", "avg_read_identity", 
+        "filtered_reads_in_sample"
     ])
     # for the output "main" table we only want records with 1 or more reads
     merged_out = merged2.filter(pl.col("read_count") >= 1)

@@ -2,11 +2,8 @@ name: EsViritu
 channels:
   - conda-forge
   - bioconda
-  - defaults
 dependencies:
-  - python=3.11.0
-  - blast
-  - r-rcolorbrewer
+  - python>=3.11.0
   - minimap2[version='>=2.21']
   - r-scales
   - r-htmltools
