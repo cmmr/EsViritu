@@ -10,11 +10,9 @@ import polars as pl
 try:
     from . import esv_funcs as esvf
     from .utils.timing import timed_function
-    from . import report_funcs as repf
 except:
     import esv_funcs as esvf
     from utils.timing import timed_function
-    import report_funcs as repf
 
 
 def esviritu():
