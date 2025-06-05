@@ -546,8 +546,7 @@ def esviritu():
     # get read ANI per contig
     read_ani_df = esvf.read_ani_from_bam(
         second_map_bam
-    ),
-
+    )
     rani_of = os.path.join(
         args.TEMP_DIR,
         f"{str(args.SAMPLE)}.read_ani.per_contig.tsv"
