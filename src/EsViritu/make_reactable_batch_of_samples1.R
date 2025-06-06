@@ -43,11 +43,9 @@ sum_coverage <- coverage_data %>%
 
 
 ### merge read depth and tax/abundance info on sample_ID and accession columns
-#colnames(genome_data)
 setkey(genome_data, sample_ID, accession)
 
 sum_coverage <- setDT(sum_coverage)
-#colnames(sum_coverage)
 setkey(sum_coverage, sample_ID, accession)
 
 combined_data <- genome_data[sum_coverage]
@@ -56,11 +54,15 @@ combined_data <- na.omit(combined_data)
 
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$reference_length
 
-combined_data <- subset(combined_data, 
-                        select = c("sample_ID", "sequence_name", "accession", 
-                                   "reference_length", "Percent_covered", 
-                                   "RPKMF", "reads_aligned", "genus", "species", 
-                                   "subspecies", "coverage"))
+combined_data <- subset(
+  combined_data,
+  select = c(
+    "sample_ID", "sequence_name", "Segment", "accession",
+    "reference_length", "Percent_covered",
+    "RPKMF", "reads_aligned", "genus", "species",
+    "subspecies", "coverage"
+  )
+)
 
 ## check for dataui
 is_dataui <- require(dataui)

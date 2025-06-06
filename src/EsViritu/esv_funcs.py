@@ -628,6 +628,10 @@ def assembly_table_maker(
         tuple of DataFrames, one summarized by accession, one by assembly.
     """
 
+    ### There are a few entries that get into main table and then the report because they have "reads"
+    ### and "coverage" in the coverm table, but they don't get counted in 
+    ### the final consensus .fasta because the alignments are probably all secondary
+    ### need to fix this here or at the coverm table step
     # pare to necessary columns
     df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage"])
     merged = df1.join(df2, on="Accession", how="right")
@@ -975,6 +979,5 @@ def print_esviritu_banner():
 |_____| |____/     \/    |_____||_|  \_\|_____|   |_|   \____/ 
                                                                  
 """)
-## Compare consensus .fastas to reference .fastas
-### or calculate average read ANI,
-### declare ambiguity for high divergence
+## declare ambiguity for high divergence?
+## Calculate average nucleotide diversity per position

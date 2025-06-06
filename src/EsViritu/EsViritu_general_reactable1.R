@@ -41,7 +41,7 @@ names(sum_coverage)[2] <- "coverage"
 combined_data <- merge(genome_data, sum_coverage, by = "Accession")
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
 keep <- c(
-  "Name", "Accession", "Assembly",
+  "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
   "read_count", "avg_read_identity", "genus",
   "species", "subspecies", "coverage"
