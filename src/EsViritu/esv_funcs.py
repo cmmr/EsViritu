@@ -632,6 +632,9 @@ def assembly_table_maker(
     ### and "coverage" in the coverm table, but they don't get counted in 
     ### the final consensus .fasta because the alignments are probably all secondary
     ### need to fix this here or at the coverm table step
+
+
+    ### Also, sort the main table by family, genus, species, assembly, segment
     # pare to necessary columns
     df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage"])
     merged = df1.join(df2, on="Accession", how="right")
@@ -657,6 +660,8 @@ def assembly_table_maker(
         "family", "genus", "species", "subspecies", "RPKMF",
         "read_count", "covered_bases", "mean_coverage", 
         "avg_read_identity", "filtered_reads_in_sample"
+    ]).sort([
+        "family", "genus", "species", "Assembly", "Segment"
     ])
     # for the output "main" table we only want records with 1 or more reads
     merged_out = merged2.filter(pl.col("read_count") >= 1)

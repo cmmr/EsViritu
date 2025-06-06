@@ -38,8 +38,9 @@ where = ["src"]
 [tool.setuptools.package-data]
 "EsViritu" = ["*.R", "*.sh"]
 
-[project.scripts]  
+[project.scripts]
 EsViritu = "EsViritu:EsViritu"
+summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
 
 [project.urls]
 "Homepage" = "https://github.com/cmmr/EsViritu"
