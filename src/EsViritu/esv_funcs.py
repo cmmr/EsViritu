@@ -242,7 +242,7 @@ def minimap2_f(reference: str,
     return sorted_outbf
 
 ## take filtered .bam, make a coverm-like file
-def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
+def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = True) -> pl.DataFrame:
     """
     Takes a sorted BAM file and sample name and generates a table with:
     contig length, covered bases, read count, and mean coverage for each contig.
@@ -269,7 +269,8 @@ def bam_to_coverm_table(bam_path: str, sample: str) -> pl.DataFrame:
         length = bamfile.header.get_reference_length(contig)
         # Use pileup to get per-base coverage
         coverage = [0] * length
-        for pileupcolumn in bamfile.pileup(contig=contig, start=0, end=length, stepper="nofilter"):
+        stepper = "nofilter" if include_secondary else "all"
+        for pileupcolumn in bamfile.pileup(contig=contig, start=0, end=length, stepper=stepper):
             # pileupcolumn.pos is 0-based coordinate
             if 0 <= pileupcolumn.pos < length:
                 coverage[pileupcolumn.pos] = pileupcolumn.nsegments
@@ -628,13 +629,6 @@ def assembly_table_maker(
         tuple of DataFrames, one summarized by accession, one by assembly.
     """
 
-    ### There are a few entries that get into main table and then the report because they have "reads"
-    ### and "coverage" in the coverm table, but they don't get counted in 
-    ### the final consensus .fasta because the alignments are probably all secondary
-    ### need to fix this here or at the coverm table step
-
-
-    ### Also, sort the main table by family, genus, species, assembly, segment
     # pare to necessary columns
     df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage"])
     merged = df1.join(df2, on="Accession", how="right")
@@ -974,6 +968,20 @@ def read_ani_from_bam(bam_path):
         })
     return pl.DataFrame(records)
 
+## check for empty bam
+
+def bam_has_alignments(bam_path):
+    """
+    Check if a BAM file has any aligned reads using pysam.
+    Returns True if there are aligned reads, False otherwise.
+    """
+    import pysam
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        for _ in bam.fetch(until_eof=True):
+            return True
+    return False
+
+
 def print_esviritu_banner():
     print(r"""
  _____   _____ __      __ _____  _____   _____  _______ _    _ 
@@ -989,40 +997,63 @@ def ghost_banner():
     print(
         r"""
 
-                              ░▒▒▒   ▒▒                    
-                         ▒▒▒░░░░ ░      ▒▒                 
-            ░░░░░   ▒▒░░░░░░░░ ▒     ░     ▒               
-            ░░░░▒▒░░░░░░░░░░ ▒        ░      ▒░            
-              ░░ ░░░░░░░░░ ▓                   ▒░          
-              ▒░ ░░░░░░  ▒             ▒         ▒░        
-              ▒░▒░░░░  ░                ░          ▒░ ░░░░ 
-              ░░▒    ░                               ▒░░░░░
-             ▒░░░░░░░                    ▒            ▒░░░ 
-             ▒░░░░░░░░                            ▒   ▒    
-             ▒░░░░░           ░▒▒░      ░░░░░ ░░   ▒  ▒    
-             ▒░░░ ░░                    ░░░░░   ▓  ▓░░     
-            ░░░░▒░░░                     ░░░    ▓  ▓░▒     
-            ▓░░░ ░░░░             ░░  ░     ░   ▓  ▒ ▒     
-        ░░░ ▒░░▒ ░░░▒           ░░   ▒          ▓   ░      
-       ░░░░░░░▒ ░░░░░░     ░░░░▒    ▒        ░      ▒      
-        ░░░▒░▒ ░░░░░░▒                        ▒     ▒      
-          ▒░▒ ░░░░░░░░           ░          ░      ▒       
-         ▒░▒ ░░░░░░░░░░    ░▒   ▒    ░░    ░▒      ▒       
-       ▒░░░░░░░░░░ ░░░░░  ░    ░    ░▒    ░░    ░  ▒       
-    ░▒░░░░░░░░░░▒ ░░░░░░           ░▒     ░       ▒░░      
-  ░▒░░░░░░░░░▒  ░░░░░░░░          ░▒ ░▒▒ ░       ░▒░░░     
-  ▒░░░░░░░░░░░░░░░░░░░▒          ░▒     ░░      ▒░░░░      
-  ▒░░░░░░░░░░░░░░░░░▒           ░▒     ░░      ▒           
-   ▒▒░░▒▒░░▒                   ░      ░▒      ▒            
-      ▒░░░░▒                 ░▒      ░░      ▒             
-       ▒▒▒░                ░░        ░      ▓              
-         ▒      ░▒░      ░           ░     ░▒              
-          ░▒▒▒▒    ▒                       ▒               
-                  ▒                       ▒                
-                  ░      ░▒░░░▒          ▒                 
-                    ▒▒▒▒░▒░░░░░▒        ▒                  
+                                                     ░░▒▓▓▓▒░░▒▓▒░                                  
+                                               ░▒▒▓▒▒░░░   ░     ░▓▒░                               
+                                          ░▒▓▓▒░░░░░░░░  ▒    ░    ░▒▓░                             
+                    ░░░░░░░░         ░▒▓▓▒░░░░░░░░░░░  ▒       ░      ▒▓▒                           
+                    ░░░░░░░░░   ░▒▓▓▒░░░░░░░░░░░░░░ ░▒         ░░       ░▓▓░                        
+                   ░░░░░░░░░░▒▓▓▒░░░░░░░░░░░░░░░░ ░▒            ▒         ░▒▒░                      
+                    ░░░░░░▒▓░ ░░░░░░░░░░░░░░░░  ▒▒              ░▒           ▒▓▒                    
+                     ░░░░▓░  ░░░░░░░░░░░░░░░  ▒▒                 ░░            ▒▓░                  
+                        ▒▒░  ░░░░░░░░░░░░░  ▒░                    ▓              ░▓▒                
+                        ▓░░░ ░░░░░░░░░░░  ▒░                      ░░               ░▓▒              
+                       ░▓░░▒ ░░░░░░░░░  ▒░                         ▒                 ▒▓░            
+                       ▒▒░░▒░░░░░░░   ▒░                            ▒                  ▒▓░ ░░░░░░░░ 
+                       ▒▒░░░░ ░░░   ░░                              ░░                   ▓▒░░░░░░░░░
+                       ▓░░░░░░░ ░░▒                                  ▒                    ░▓▒░░░░░░ 
+                      ░▓░░░░░░░░░░░░                                  ░                     ▒▒░░░░░ 
+                      ░▒░░░░░░░░░░░░                                  ░                 ░░  ▓░░░░░  
+                      ▒▒░░░░░░░░░░░░▒▒▒░░                              ░            ▒▒░    ░▓       
+                      ▒░░░░░░░░░░░        ░░░▒▒▒▒▒░░                ░░░░░░░░    ░▒▒░       ▒▓       
+                     ░▓░░░░░░░░░░                       ░░▒▒▒░     ░░░░░░░░░░▒▒        ▓▒  ▒▒       
+                     ░▓░░░░░▒░░░░                                  ░░░░░░░░░░    ▒▒   ░▓▓ ░▓░       
+                     ▒▒░░░░░░░░░░░                                   ░░░░░░░     ▓▓░  ▒▓▓ ▒▒        
+                     ▓▒░░░░▒░░░░░▒                                 ░  ░░░░░     ░▓▓░  ░▓▓ ▒▒        
+                    ░▓░░░░░▒ ░░░░▒░                               ▒        ▒    ░▓▓░  ░▓▒░▓░        
+                    ░▓░░░░▒░ ░░░░░▒                     ░░░░░░  ░▒         ░     ▓▓░   ▒░▒▒         
+                ░░  ▒▓░░░░▒ ░░░░░░▒░                  ░░░▒▒    ░░           ░    ▓▓      ▓▒         
+             ░░░░░░░▒▒░░░▒  ░░░░░░░▒                ░░░▒▒     ▒             ▒░          ░▓░         
+            ░░░░░░░░▓░░░▒░ ░░░░░░░░▒░          ░░░░░░▒▒      ▒░              ▒          ▒▒          
+             ░░░░░░▓░░░░░ ░░░░░░░░░░▒             ░░       ░▒                ░░         ▒░          
+              ░░░░▓▒░░░░ ░░░░░░░░░░░▒                     ░▒              ░   ▒░       ░▓           
+                ░▓▒░░░░ ░░░░░░░░░░░░░░                   ░▒       ░       ░    ▒       ▒▒           
+                ▓▒░░▒  ░░░░░░░░░▒░░░░░             ░    ▒░      ░░░      ░░░   ░░      ▓░           
+               ▓▒░░▒  ░░░░░░░░░░░░░░░░░      ░░░▒░     ▓       ░░▒       ░░▒    ░░    ░▓            
+             ░▓░░░░ ░░░░░░░░░░░▒ ░░░░░░░    ░▒▒       ░      ░░░░       ░░░░     ▒    ▒▒            
+           ░▓▓░░░░░░░░░░░░░░░░▒ ░░░░░░░░░  ░▒       ░░      ░░░▒        ░░░       ░  ░▓░            
+         ░▓▒░░░░░░░░░░░░░░░░░▒  ░░░░░░░░░  ░       ░       ░░░▒        ░░▒           ▒▒             
+      ░▒▓░░░░░░░░░░░░░░░░░▒▒  ░░░░░░░░░░░                 ░░░▒░       ░░▒    ░░░▒▒░  ▒▒░░░░         
+     ▓▒░░░░░░░░░░░░░░░░▒▒   ░░░░░░░░░░░░░░                ░░▒░    ░░░░░▒            ░▓░░░░░░        
+   ▒▓░░░░░░░░░░░░░░░▒░   ░░░░░░░░░░░░░░░░                ░░▒░       ░░▒            ▒▒░░░░░░         
+  ░▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒         ░░░░    ░░▒░       ░░▒░           ▓▒░░░░░░          
+  ░▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒░                 ░░▒░       ░░▒░          ░▓▒  ░░░░           
+   ▓▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒▓░                  ░░▓        ░░░▒           ▓░                  
+    ▓▒░░░░░░░░░▒▓▓▒░░░░░░░░░░▒▒░                     ░░▒        ░░░▒          ░▓░                   
+      ▒▓▓▒▓▓▓▒░░░░░▓░                              ░░▒░        ░░░░░         ░▓░                    
+         ░▓░░░░░░░▒▓                              ░░▒          ░░░░         ░▓░                     
+          ▒▒░░░░░▒▓░                            ░░▒           ░░░▒          ▓░                      
+           ░▓▓▒▒▓▒                           ░░░▒░            ░░░          ▓░                       
+              ░▒▒                         ░░░░░░              ░░░         ▒▓                        
+               ░▓         ░▒▓▓▓▓░                             ░░         ░▓░                        
+                ░▓▒░   ░▒▓▒░   ░▓░                             ░         ▓░                         
+                    ░░░░        ▓░                                      ▓▒                          
+                               ▓▒                                      ▒▒                           
+                              ░▓░            ░▓▓▓▓░                   ▒▒                            
+                               ▒▒          ▒▓░░░░░░▓▓░               ▒▒                             
+                                ░▓▒░    ░▒▓░░░░░░░░░▒▓              ▒▒                              
+                                   ░▒▓▒▒░ ░▒░░░░░░░░░▓             ▒▒                               
 
 """
     )
-## declare ambiguity for high divergence?
-## Calculate average nucleotide diversity per position
+### declare ambiguity for high divergence?
+### Calculate average nucleotide diversity per position

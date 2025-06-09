@@ -78,16 +78,6 @@ def esviritu():
             DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "filter_seqs")
             )
     optional_args.add_argument(
-        '-i', "--compare", 
-        dest="COMPARE", type=esvf.str2bool, default=True,
-        help='True or False. Calculate percent identity between sample consensus and reference sequences?'
-        )
-    optional_args.add_argument(
-        "-m", "--mode", 
-        dest="MODE", type=str, default='general',
-        help='Placeholder for future development. Do not change.'
-        )
-    optional_args.add_argument(
         "--temp", 
         dest="TEMP_DIR", type=str, default='default',
         help='path of temporary directory. Default is {OUTPUT_DIR}/{SAMPLE}_temp/'
@@ -111,7 +101,6 @@ def esviritu():
             variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, \
             DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
         )
-
     optional_args.add_argument(
         "-wd", "--working_directory", 
         dest="c_workdir", type=str, default=def_workdir, 
@@ -236,9 +225,6 @@ def esviritu():
         logger.info("see yml. Exiting")
         sys.exit()
 
-
-
-
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
     
     for tool in tool_dep_list:
@@ -267,7 +253,14 @@ def esviritu():
         "filter_seqs.fna"
     )
 
-    # Apply the timed_function decorator directly to the function call
+
+
+    ################################################
+    ################################################
+    ###### Beginning main alignment pipeline #######
+    ################################################
+    ################################################
+    
     trim_filter_fn = timed_function(logger=logger)(esvf.trim_filter)
     trim_filt_reads = trim_filter_fn(
         args.READS,
@@ -304,6 +297,23 @@ def esviritu():
     )
 
     logger.info(initial_map_bam)
+
+    ## check if any reads aligned or quit
+    if not esvf.bam_has_alignments(initial_map_bam):
+        logger.error(
+            f"No reads aligned to the EsViritu DB in {initial_map_bam}",
+            f"Exiting..."
+        )
+        if args.KEEP:
+            logger.info(f"keeping temp files in {args.TEMP_DIR}")
+        else:
+            try:
+                if os.path.isdir(args.TEMP_DIR):
+                    shutil.rmtree(args.TEMP_DIR)
+                    logger.info(f"Removed temporary directory {args.TEMP_DIR}")
+            except Exception as e:
+                logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
+        sys.exit()
 
     # Load virus info metadata table in polars
     vir_meta_df = pl.read_csv(
@@ -380,7 +390,8 @@ def esviritu():
     bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
     second_coverm_like_dt = bam_to_coverm_table_fn(
         second_map_bam,
-        str(args.SAMPLE)
+        str(args.SAMPLE),
+        False
     )
 
     second_coverm_like_dt.write_csv(
