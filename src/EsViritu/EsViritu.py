@@ -171,6 +171,7 @@ def esviritu():
     #########################
 
     esvf.print_esviritu_banner()
+    esvf.ghost_banner()
     
     if str(args.TEMP_DIR) == "default":
         args.TEMP_DIR = os.path.join(
