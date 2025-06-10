@@ -43,7 +43,7 @@ combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Len
 keep <- c(
   "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
-  "read_count", "avg_read_identity", "genus",
+  "read_count", "avg_read_identity", "Pi", "genus",
   "species", "subspecies", "coverage"
 )
 combined_data <- combined_data[, keep]

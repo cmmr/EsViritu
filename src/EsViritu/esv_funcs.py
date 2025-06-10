@@ -245,7 +245,7 @@ def minimap2_f(reference: str,
 def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = True) -> pl.DataFrame:
     """
     Takes a sorted BAM file and sample name and generates a table with:
-    contig length, covered bases, read count, and mean coverage for each contig.
+    contig length, covered bases, read count, mean coverage, and nucleotide diversity (π) for each contig.
     Efficiently skips contigs without alignments.
     Returns a polars DataFrame.
     """
@@ -261,6 +261,8 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
     bamfile.reset()
     
     records = []
+    contig_pi = defaultdict(float)
+    contig_sites = defaultdict(int)
     for contig in bamfile.header.references:
         # Skip contigs without alignments
         if contig not in contigs_with_reads:
@@ -274,18 +276,31 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
             # pileupcolumn.pos is 0-based coordinate
             if 0 <= pileupcolumn.pos < length:
                 coverage[pileupcolumn.pos] = pileupcolumn.nsegments
+                # Calculate nucleotide diversity (π)
+                if pileupcolumn.n > 1:  # More than one read covers this position
+                    bases = pileupcolumn.get_query_sequences()
+                    mismatches = sum(1 for i in range(len(bases)) for j in range(i + 1, len(bases)) if bases[i] != bases[j])
+                    total_pairs = pileupcolumn.n * (pileupcolumn.n - 1) / 2
+                    if total_pairs > 0:
+                        pi_value = mismatches / total_pairs
+                        contig_pi[contig] += pi_value
+                        contig_sites[contig] += 1
         covered_bases = sum(1 for d in coverage if d > 0)
         mean_cov = sum(coverage) / length if length > 0 else 0
         # Read count for contig
         read_count = bamfile.count(contig=contig)
         
+        # Calculate average π for the contig
+        avg_pi = contig_pi[contig] / contig_sites[contig] if contig_sites[contig] > 0 else 0
+
         records.append({
             "sample": sample,
             "Accession": contig,
             "contig_length": length,
             "covered_bases": covered_bases,
             "read_count": read_count,
-            "mean_coverage": mean_cov
+            "mean_coverage": mean_cov,
+            "Pi": avg_pi
         })
     bamfile.close()
 
@@ -630,13 +645,14 @@ def assembly_table_maker(
     """
 
     # pare to necessary columns
-    df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage"])
+    df1 = df1.select(["Accession", "covered_bases", "read_count", "mean_coverage", "Pi"])
     merged = df1.join(df2, on="Accession", how="right")
     # fill 0s
     merged = merged.with_columns(
         pl.col("read_count").fill_null(strategy="zero"),
         pl.col("covered_bases").fill_null(strategy="zero"),
-        pl.col("mean_coverage").fill_null(strategy="zero")
+        pl.col("mean_coverage").fill_null(strategy="zero"),
+        pl.col("Pi").fill_null(strategy="zero")
         )
     # calculate/add more columns
     merged = merged.with_columns([
@@ -653,7 +669,7 @@ def assembly_table_maker(
         "Asm_length", "kingdom", "phylum", "tclass", "order",
         "family", "genus", "species", "subspecies", "RPKMF",
         "read_count", "covered_bases", "mean_coverage", 
-        "avg_read_identity", "filtered_reads_in_sample"
+        "avg_read_identity", "Pi", "filtered_reads_in_sample"
     ]).sort([
         "family", "genus", "species", "Assembly", "Segment"
     ])
@@ -709,7 +725,7 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
             # Get coverage for this window using pileup
             window_length = end - start
             coverage = [0] * window_length
-            for pileupcolumn in bam.pileup(contig=contig, start=start, end=end, stepper="nofilter"):
+            for pileupcolumn in bam.pileup(contig=contig, start=start, end=end, stepper="all"):
                 pos_in_window = pileupcolumn.pos - start
                 if 0 <= pos_in_window < window_length:
                     coverage[pos_in_window] = pileupcolumn.nsegments
@@ -791,8 +807,6 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
     Returns a polars DataFrame with Assembly, contig pairs, number of shared reads, and share of total reads for each contig.
     """
     bamfile = pysam.AlignmentFile(bam_path, "rb")
-    from collections import defaultdict
-    import polars as pl
 
     # Step 1: Collect read IDs for each contig
     contig_reads = defaultdict(set)
@@ -867,8 +881,6 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
     For each cluster, choose an exemplar assembly with the highest number of reads aligned.
     Returns a polars DataFrame mapping each assembly to its cluster and exemplar.
     """
-    import polars as pl
-    from collections import defaultdict
 
     # Build undirected graph of assemblies to cluster
     edges = []
@@ -931,9 +943,6 @@ def read_ani_from_bam(bam_path):
     Calculate average read identity (ANI) and alignment length for each contig in a BAM file.
     Returns a polars DataFrame with columns: Accession, avg_read_identity, avg_align_len, n_reads
     """
-    import pysam
-    import polars as pl
-    from collections import defaultdict
 
     contig_identity_sum = defaultdict(float)
     contig_align_len_sum = defaultdict(int)
@@ -975,7 +984,6 @@ def bam_has_alignments(bam_path):
     Check if a BAM file has any aligned reads using pysam.
     Returns True if there are aligned reads, False otherwise.
     """
-    import pysam
     with pysam.AlignmentFile(bam_path, "rb") as bam:
         for _ in bam.fetch(until_eof=True):
             return True
@@ -1011,7 +1019,7 @@ def ghost_banner():
                        ▒▒░░▒░░░░░░░   ▒░                            ▒                  ▒▓░ ░░░░░░░░ 
                        ▒▒░░░░ ░░░   ░░                              ░░                   ▓▒░░░░░░░░░
                        ▓░░░░░░░ ░░▒                                  ▒                    ░▓▒░░░░░░ 
-                      ░▓░░░░░░░░░░░░                                  ░                     ▒▒░░░░░ 
+                      ░▓░░░░░░░░░░░░                                  ░                     ▒▒░░░░░  
                       ░▒░░░░░░░░░░░░                                  ░                 ░░  ▓░░░░░  
                       ▒▒░░░░░░░░░░░░▒▒▒░░                              ░            ▒▒░    ░▓       
                       ▒░░░░░░░░░░░        ░░░▒▒▒▒▒░░                ░░░░░░░░    ░▒▒░       ▒▓       

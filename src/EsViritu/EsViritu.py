@@ -170,6 +170,7 @@ def esviritu():
     
     logger.info(args.TEMP_DIR)
 
+
     READS = ' '.join(map(str,args.READS))
 
     if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
@@ -222,7 +223,7 @@ def esviritu():
         logger.info("some required R packages are not found. Required:")
         logger.info("reactable, htmltools, dplyr, reactablefmtr, dataui, data.table, RColorBrewer, viridis, scales, knitr")
         logger.info("Did you activate the conda environment?")
-        logger.info("see yml. Exiting")
+        logger.info("see EsViritu.yml. Exiting")
         sys.exit()
 
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
@@ -430,7 +431,7 @@ def esviritu():
         file = rani_of,
         separator = "\t"
     )
-    logger.info(read_ani_df)
+    logger.info(rani_of)
 
     ## Make "main" and "assembly" output table
 
