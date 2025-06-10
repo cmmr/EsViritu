@@ -23,13 +23,15 @@ coverage_data <- read.table(
   args[1],
   sep = "\t",
   header = TRUE,
-  stringsAsFactors = FALSE
+  stringsAsFactors = FALSE,
+  quote = ""
 )
 genome_data <- read.table(
   args[2],
   sep = "\t",
-  header = TRUE, 
-  stringsAsFactors = FALSE
+  header = TRUE,
+  stringsAsFactors = FALSE,
+  quote = ""
 )
 coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
 sum_coverage <- aggregate(
@@ -58,7 +60,7 @@ is_dataui <- require(dataui)
 
 if (is_dataui == TRUE) {
   suppressMessages(library(dataui))
-  
+
   nice_table <- combined_data %>%
     reactable(
       .,
