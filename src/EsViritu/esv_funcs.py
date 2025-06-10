@@ -280,10 +280,12 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
                     base = pileupread.alignment.query_sequence[pileupread.query_position]
                     base_counts[base] += 1
                 if base_counts: 
-                    pi = sum(base_counts.values()) - base_counts[max(base_counts, key=base_counts.get)]
+                    tot_cov = sum(base_counts.values())
+                    maxN_cov = base_counts[max(base_counts, key=base_counts.get)]
+                    pi = (tot_cov - maxN_cov) / tot_cov
                     pi_list.append(pi)
         
-        avg_pi = statistics.mean(pi_list)
+        avg_pi = round(statistics.mean(pi_list), 3)
         covered_bases = sum(1 for d in coverage if d > 0)
         mean_cov = sum(coverage) / length if length > 0 else 0
         read_count = bamfile.count(contig=contig)
@@ -1060,3 +1062,129 @@ def ghost_banner():
     )
 ### declare ambiguity for high divergence?
 ### Calculate average nucleotide diversity per position
+def calculate_nucleotide_diversity(bam_path: str, reference: str = None, min_mapq: int = 20, min_baseq: int = 20) -> pl.DataFrame:
+    """
+    Calculate nucleotide diversity (π) per contig from a BAM file using bcftools.
+    
+    Args:
+        bam_path: Path to input BAM file (must be indexed)
+        reference: Path to reference genome FASTA file (optional, but recommended)
+        min_mapq: Minimum mapping quality
+        min_baseq: Minimum base quality
+        
+    Returns:
+        polars.DataFrame with columns: contig, length, n_sites, n_variant_sites, pi
+        where pi is the average nucleotide diversity per site
+    """
+
+    # Check if bcftools is installed
+    try:
+        subprocess.run(['bcftools', '--version'], 
+                      check=True, 
+                      stdout=subprocess.PIPE, 
+                      stderr=subprocess.PIPE)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        logging.error("bcftools is not installed or not in PATH. Please install bcftools.")
+        raise RuntimeError("bcftools is required but not found. Please install bcftools.")
+    
+    # Create temporary directory for intermediate files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Generate VCF using bcftools mpileup
+        vcf_path = os.path.join(tmpdir, 'variants.vcf.gz')
+        
+        # Build bcftools command
+        cmd = [
+            'bcftools', 'mpileup',
+            '--output-type', 'z',
+            '--min-MQ', str(min_mapq),
+            '--min-BQ', str(min_baseq),
+            '--output', vcf_path
+        ]
+        
+        if reference:
+            cmd.extend(['--fasta-ref', reference])
+        
+        cmd.append(bam_path)
+        
+        # Run bcftools mpileup
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            logging.error(f"bcftools mpileup failed: {e.stderr}")
+            raise
+        
+        # Index the VCF
+        try:
+            subprocess.run(['bcftools', 'index', vcf_path], check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            logging.error(f"bcftools index failed: {e.stderr}")
+            raise
+        
+        # Calculate π using bcftools stats
+        try:
+            result = subprocess.run(
+                ['bcftools', 'stats', '--sites', vcf_path],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # Parse the output
+            contig_data = []
+            current_contig = None
+            
+            for line in result.stdout.split('\n'):
+                if line.startswith('SN'):
+                    fields = line.split('\t')
+                    if len(fields) >= 4 and 'number of records' in fields[2]:
+                        contig_data.append({
+                            'contig': current_contig,
+                            'n_variant_sites': int(fields[3])
+                        })
+                elif line.startswith('#'):
+                    # Skip comment lines
+                    continue
+                elif line.startswith('ID'):
+                    # This is a contig line
+                    fields = line.split('\t')
+                    if len(fields) >= 3:
+                        current_contig = fields[1]
+                        contig_data.append({
+                            'contig': current_contig,
+                            'length': int(fields[2])
+                        })
+            
+            # Convert to a dictionary for easier processing
+            contig_dict = {}
+            for item in contig_data:
+                contig = item['contig']
+                if contig not in contig_dict:
+                    contig_dict[contig] = {'contig': contig}
+                contig_dict[contig].update(item)
+            
+            # Calculate π for each contig
+            results = []
+            for contig, data in contig_dict.items():
+                if 'length' not in data:
+                    continue
+                    
+                length = data['length']
+                n_var_sites = data.get('n_variant_sites', 0)
+                
+                # π = (number of variant sites) / (total sites)
+                # This is a simplified calculation - actual π would require allele frequencies
+                pi = n_var_sites / length if length > 0 else 0.0
+                
+                results.append({
+                    'contig': contig,
+                    'length': length,
+                    'n_sites': length,
+                    'n_variant_sites': n_var_sites,
+                    'pi': pi
+                })
+            
+            return pl.DataFrame(results)
+            
+        except subprocess.CalledProcessError as e:
+            logging.error(f"bcftools stats failed: {e.stderr}")
+            raise
