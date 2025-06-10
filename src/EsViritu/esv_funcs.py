@@ -275,11 +275,11 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
             # Update base counts at each position
             if not read.is_unmapped and not read.is_secondary or include_secondary:
                 ref_pos = read.reference_start
-                for query_pos, (qpos, ref_pos, ref_base) in read.get_aligned_pairs(matches_only=True, with_seq=True):
+                for query_pos, (qpos, ref_pos) in read.get_aligned_pairs(matches_only=True, with_seq=False):
                     if qpos is not None and ref_pos is not None and ref_pos < length:
                         base = read.query_sequence[qpos].upper()
-                        if base in 'ACGTN':
-                            base_counts[ref_pos][base] += 1
+                if base in 'ACGTN':
+                    base_counts[ref_pos][base] += 1
 
         # Calculate Pi for each position with coverage
         for pos in range(length):
