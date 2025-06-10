@@ -6,6 +6,7 @@ import json
 import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
+import statistics
 from typing import Tuple
 from collections import defaultdict, Counter
 from distutils.spawn import find_executable
@@ -256,13 +257,11 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
     contigs_with_reads = set()
     for read in bamfile.fetch():
         contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
-    
     # Reset file pointer
     bamfile.reset()
-    
     records = []
-    contig_pi = defaultdict(float)
-    contig_sites = defaultdict(int)
+    stepper = "nofilter" if include_secondary else "all"
+
     for contig in bamfile.header.references:
         # Skip contigs without alignments
         if contig not in contigs_with_reads:
@@ -271,27 +270,23 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
         length = bamfile.header.get_reference_length(contig)
         # Use pileup to get per-base coverage
         coverage = [0] * length
-        stepper = "nofilter" if include_secondary else "all"
+        pi_list = []
         for pileupcolumn in bamfile.pileup(contig=contig, start=0, end=length, stepper=stepper):
-            # pileupcolumn.pos is 0-based coordinate
-            if 0 <= pileupcolumn.pos < length:
-                coverage[pileupcolumn.pos] = pileupcolumn.nsegments
-                # Calculate nucleotide diversity (π)
-                if pileupcolumn.n > 1:  # More than one read covers this position
-                    bases = pileupcolumn.get_query_sequences()
-                    mismatches = sum(1 for i in range(len(bases)) for j in range(i + 1, len(bases)) if bases[i] != bases[j])
-                    total_pairs = pileupcolumn.n * (pileupcolumn.n - 1) / 2
-                    if total_pairs > 0:
-                        pi_value = mismatches / total_pairs
-                        contig_pi[contig] += pi_value
-                        contig_sites[contig] += 1
+            coverage[pileupcolumn.pos] = pileupcolumn.nsegments
+            # calculating pi 
+            base_counts = Counter()
+            for pileupread in pileupcolumn.pileups:
+                if not pileupread.is_del and not pileupread.is_refskip:
+                    base = pileupread.alignment.query_sequence[pileupread.query_position]
+                    base_counts[base] += 1
+                if base_counts: 
+                    pi = sum(base_counts.values()) - base_counts[max(base_counts, key=base_counts.get)]
+                    pi_list.append(pi)
+        
+        avg_pi = statistics.mean(pi_list)
         covered_bases = sum(1 for d in coverage if d > 0)
         mean_cov = sum(coverage) / length if length > 0 else 0
-        # Read count for contig
         read_count = bamfile.count(contig=contig)
-        
-        # Calculate average π for the contig
-        avg_pi = contig_pi[contig] / contig_sites[contig] if contig_sites[contig] > 0 else 0
 
         records.append({
             "sample": sample,
