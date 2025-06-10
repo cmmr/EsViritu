@@ -1123,7 +1123,7 @@ def calculate_nucleotide_diversity(bam_path: str, reference: str = None, min_map
         # Calculate π using bcftools stats
         try:
             result = subprocess.run(
-                ['bcftools', 'stats', '--sites', vcf_path],
+                ['bcftools', 'stats', vcf_path],
                 capture_output=True,
                 text=True,
                 check=True
