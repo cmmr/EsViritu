@@ -279,11 +279,11 @@ def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = Tr
                 if not pileupread.is_del and not pileupread.is_refskip:
                     base = pileupread.alignment.query_sequence[pileupread.query_position]
                     base_counts[base] += 1
-                if base_counts: 
-                    tot_cov = sum(base_counts.values())
-                    maxN_cov = base_counts[max(base_counts, key=base_counts.get)]
-                    pi = (tot_cov - maxN_cov) / tot_cov
-                    pi_list.append(pi)
+            if base_counts: 
+                tot_cov = sum(base_counts.values())
+                maxN_cov = base_counts[max(base_counts, key=base_counts.get)]
+                pi = (tot_cov - maxN_cov) / tot_cov
+                pi_list.append(pi)
         
         avg_pi = round(statistics.mean(pi_list), 3)
         covered_bases = sum(1 for d in coverage if d > 0)
