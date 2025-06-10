@@ -392,6 +392,7 @@ def esviritu():
     second_coverm_like_dt = bam_to_coverm_table_fn(
         second_map_bam,
         str(args.SAMPLE),
+        int(args.CPU),
         False
     )
 
@@ -402,22 +403,6 @@ def esviritu():
         ),
         separator = "\t"
     )
-
-    ## other pi method
-    calculate_nucleotide_diversity_fn = timed_function(logger=logger)(esvf.calculate_nucleotide_diversity)
-
-    vcf_pi_df = calculate_nucleotide_diversity_fn(
-        second_map_bam,
-        sec_con_f
-    )
-    vcf_pi_df.write_csv(
-        file = os.path.join(
-            args.TEMP_DIR,
-            f"{str(args.SAMPLE)}_vcf_pi.tsv"
-        ),
-        separator = "\t"
-    )
-
 
     ## Make bedtools-like windows coverage
     bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)

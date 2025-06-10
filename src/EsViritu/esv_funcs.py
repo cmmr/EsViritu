@@ -6,8 +6,11 @@ import json
 import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
+from concurrent.futures import ProcessPoolExecutor
+import numpy as np
+from collections import Counter
 import statistics
-from typing import Tuple
+from typing import Dict, Tuple
 from collections import defaultdict, Counter
 from distutils.spawn import find_executable
 logger = logging.getLogger("esv_logger")
@@ -243,64 +246,102 @@ def minimap2_f(reference: str,
     return sorted_outbf
 
 ## take filtered .bam, make a coverm-like file
-def bam_to_coverm_table(bam_path: str, sample: str, include_secondary: bool = True) -> pl.DataFrame:
-    """
-    Takes a sorted BAM file and sample name and generates a table with:
-    contig length, covered bases, read count, mean coverage, and nucleotide diversity (π) for each contig.
-    Efficiently skips contigs without alignments.
-    Returns a polars DataFrame.
-    """
-    # Open the sorted BAM file
-    bamfile = pysam.AlignmentFile(bam_path, "rb")
-    
-    # First, identify contigs that have alignments
-    contigs_with_reads = set()
-    for read in bamfile.fetch():
-        contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
-    # Reset file pointer
-    bamfile.reset()
-    records = []
-    stepper = "nofilter" if include_secondary else "all"
+def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool = False) -> Dict:
+    """Calculate statistics for a single contig."""
+    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+        length = bamfile.get_reference_length(contig)
+        if length == 0:
+            return None
 
-    for contig in bamfile.header.references:
-        # Skip contigs without alignments
-        if contig not in contigs_with_reads:
-            continue
-            
-        length = bamfile.header.get_reference_length(contig)
-        # Use pileup to get per-base coverage
-        coverage = [0] * length
+        # Initialize coverage array
+        coverage = np.zeros(length, dtype=np.uint32)
         pi_list = []
-        for pileupcolumn in bamfile.pileup(contig=contig, start=0, end=length, stepper=stepper):
-            coverage[pileupcolumn.pos] = pileupcolumn.nsegments
-            # calculating pi 
-            base_counts = Counter()
-            for pileupread in pileupcolumn.pileups:
-                if not pileupread.is_del and not pileupread.is_refskip:
-                    base = pileupread.alignment.query_sequence[pileupread.query_position]
-                    base_counts[base] += 1
-            if base_counts: 
-                tot_cov = sum(base_counts.values())
-                maxN_cov = base_counts[max(base_counts, key=base_counts.get)]
-                pi = (tot_cov - maxN_cov) / tot_cov
-                pi_list.append(pi)
         
-        avg_pi = round(statistics.mean(pi_list), 3)
-        covered_bases = sum(1 for d in coverage if d > 0)
-        mean_cov = sum(coverage) / length if length > 0 else 0
-        read_count = bamfile.count(contig=contig)
+        # Get all reads for this contig
+        reads = list(bamfile.fetch(contig))
+        if not reads:
+            return None
 
-        records.append({
-            "sample": sample,
+        # Calculate coverage and base counts in one pass
+        base_counts = [Counter() for _ in range(length)]
+        for read in reads:
+            if read.is_secondary and not include_secondary:
+                continue
+                
+            # Update coverage
+            for block in read.get_blocks():
+                coverage[block[0]:block[1]] += 1
+                
+            # Update base counts at each position
+            if not read.is_unmapped and not read.is_secondary or include_secondary:
+                ref_pos = read.reference_start
+                for query_pos, (qpos, ref_pos, ref_base) in read.get_aligned_pairs(matches_only=True, with_seq=True):
+                    if qpos is not None and ref_pos is not None and ref_pos < length:
+                        base = read.query_sequence[qpos].upper()
+                        if base in 'ACGTN':
+                            base_counts[ref_pos][base] += 1
+
+        # Calculate Pi for each position with coverage
+        for pos in range(length):
+            if coverage[pos] > 0 and base_counts[pos]:
+                counts = base_counts[pos]
+                total = sum(counts.values())
+                max_count = max(counts.values())
+                pi = (total - max_count) / total if total > 0 else 0
+                pi_list.append(pi)
+
+        # Calculate statistics
+        covered_bases = np.count_nonzero(coverage)
+        mean_cov = np.mean(coverage) if length > 0 else 0
+        read_count = len(reads)
+        avg_pi = round(statistics.mean(pi_list), 3) if pi_list else 0
+
+        return {
             "Accession": contig,
             "contig_length": length,
-            "covered_bases": covered_bases,
+            "covered_bases": int(covered_bases),
             "read_count": read_count,
-            "mean_coverage": mean_cov,
+            "mean_coverage": float(mean_cov),
             "Pi": avg_pi
-        })
-    bamfile.close()
+        }
 
+def bam_to_coverm_table(bam_path: str, sample: str, max_workers: int, include_secondary: bool = False) -> pl.DataFrame:
+    """
+    Optimized version of bam_to_coverm_table that processes contigs in parallel.
+    
+    Args:
+        bam_path: Path to the input BAM file
+        sample: Sample name
+        include_secondary: Whether to include secondary alignments
+        max_workers: Maximum number of worker processes to use
+        
+    Returns:
+        polars.DataFrame with coverage and diversity statistics
+    """
+    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+        # Get contigs with reads
+        contigs_with_reads = set()
+        for read in bamfile.fetch(until_eof=True):
+            if not read.is_unmapped:
+                contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
+        
+        # Process contigs in parallel
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for contig in contigs_with_reads:
+                futures.append(executor.submit(calculate_contig_stats, bam_path, contig, include_secondary))
+            
+            # Collect results
+            records = []
+            for future in futures:
+                result = future.result()
+                if result is not None:
+                    records.append(result)
+
+    # Add sample name and convert to DataFrame
+    for record in records:
+        record["sample"] = sample
+        
     return pl.DataFrame(records)
 
 ## take filtered .bam, make preliminary consensus .fastas
@@ -1061,130 +1102,3 @@ def ghost_banner():
 """
     )
 ### declare ambiguity for high divergence?
-### Calculate average nucleotide diversity per position
-def calculate_nucleotide_diversity(bam_path: str, reference: str = None, min_mapq: int = 20, min_baseq: int = 20) -> pl.DataFrame:
-    """
-    Calculate nucleotide diversity (π) per contig from a BAM file using bcftools.
-    
-    Args:
-        bam_path: Path to input BAM file (must be indexed)
-        reference: Path to reference genome FASTA file (optional, but recommended)
-        min_mapq: Minimum mapping quality
-        min_baseq: Minimum base quality
-        
-    Returns:
-        polars.DataFrame with columns: contig, length, n_sites, n_variant_sites, pi
-        where pi is the average nucleotide diversity per site
-    """
-
-    # Check if bcftools is installed
-    try:
-        subprocess.run(['bcftools', '--version'], 
-                      check=True, 
-                      stdout=subprocess.PIPE, 
-                      stderr=subprocess.PIPE)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logging.error("bcftools is not installed or not in PATH. Please install bcftools.")
-        raise RuntimeError("bcftools is required but not found. Please install bcftools.")
-    
-    # Create temporary directory for intermediate files
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Generate VCF using bcftools mpileup
-        vcf_path = os.path.join(tmpdir, 'variants.vcf.gz')
-        
-        # Build bcftools command
-        cmd = [
-            'bcftools', 'mpileup',
-            '--output-type', 'z',
-            '--min-MQ', str(min_mapq),
-            '--min-BQ', str(min_baseq),
-            '--output', vcf_path
-        ]
-        
-        if reference:
-            cmd.extend(['--fasta-ref', reference])
-        
-        cmd.append(bam_path)
-        
-        # Run bcftools mpileup
-        try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            logging.error(f"bcftools mpileup failed: {e.stderr}")
-            raise
-        
-        # Index the VCF
-        try:
-            subprocess.run(['bcftools', 'index', vcf_path], check=True, capture_output=True)
-        except subprocess.CalledProcessError as e:
-            logging.error(f"bcftools index failed: {e.stderr}")
-            raise
-        
-        # Calculate π using bcftools stats
-        try:
-            result = subprocess.run(
-                ['bcftools', 'stats', vcf_path],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            
-            # Parse the output
-            contig_data = []
-            current_contig = None
-            
-            for line in result.stdout.split('\n'):
-                if line.startswith('SN'):
-                    fields = line.split('\t')
-                    if len(fields) >= 4 and 'number of records' in fields[2]:
-                        contig_data.append({
-                            'contig': current_contig,
-                            'n_variant_sites': int(fields[3])
-                        })
-                elif line.startswith('#'):
-                    # Skip comment lines
-                    continue
-                elif line.startswith('ID'):
-                    # This is a contig line
-                    fields = line.split('\t')
-                    if len(fields) >= 3:
-                        current_contig = fields[1]
-                        contig_data.append({
-                            'contig': current_contig,
-                            'length': int(fields[2])
-                        })
-            
-            # Convert to a dictionary for easier processing
-            contig_dict = {}
-            for item in contig_data:
-                contig = item['contig']
-                if contig not in contig_dict:
-                    contig_dict[contig] = {'contig': contig}
-                contig_dict[contig].update(item)
-            
-            # Calculate π for each contig
-            results = []
-            for contig, data in contig_dict.items():
-                if 'length' not in data:
-                    continue
-                    
-                length = data['length']
-                n_var_sites = data.get('n_variant_sites', 0)
-                
-                # π = (number of variant sites) / (total sites)
-                # This is a simplified calculation - actual π would require allele frequencies
-                pi = n_var_sites / length if length > 0 else 0.0
-                
-                results.append({
-                    'contig': contig,
-                    'length': length,
-                    'n_sites': length,
-                    'n_variant_sites': n_var_sites,
-                    'pi': pi
-                })
-            
-            return pl.DataFrame(results)
-            
-        except subprocess.CalledProcessError as e:
-            logging.error(f"bcftools stats failed: {e.stderr}")
-            raise
