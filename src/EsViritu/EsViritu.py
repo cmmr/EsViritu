@@ -338,7 +338,8 @@ def esviritu():
         separator = "\t"
     )
 
-    read_clust_init_df = esvf.cluster_assemblies_by_read_sharing(
+    cluster_assemblies_by_read_sharinge_fn = timed_function(logger=logger)(esvf.cluster_assemblies_by_read_sharing)
+    read_clust_init_df = cluster_assemblies_by_read_sharinge_fn(
         initial_read_comp_df
     )
     i_read_clust_of = os.path.join(
