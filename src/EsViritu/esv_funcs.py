@@ -610,61 +610,97 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
     """
     Cluster assemblies that share at least `threshold` (default 33%) of their reads (based on the assembly with fewer reads).
     For each cluster, choose an exemplar assembly with the highest number of reads aligned.
+    Only assemblies with direct connections to the exemplar are included in each cluster.
+    Assemblies without direct connections to the exemplar are reclustered.
     Returns a polars DataFrame mapping each assembly to its cluster and exemplar.
     """
 
-    # Build undirected graph of assemblies to cluster
-    edges = []
+    # Build graph representation with direct connections
+    direct_connections = defaultdict(set)
+    
+    # Map assemblies to their total reads
+    total_reads = {}
+    
+    # Process edges and collect read counts
     for row in df.iter_rows(named=True):
         n_shared = row['n_shared_reads']
         min_reads = min(row['total_reads_a'], row['total_reads_b'])
-        if min_reads == 0:
-            continue
-        share = n_shared / min_reads
-        if share >= threshold:
-            edges.append((row['assembly_a'], row['assembly_b']))
-
-    # Union-find setup
-    parent = {}
-    def find(x):
-        while parent.get(x, x) != x:
-            x = parent[x]
-        return x
-    def union(x, y):
-        xr, yr = find(x), find(y)
-        if xr != yr:
-            parent[yr] = xr
-
-    # Union all connected assemblies
-    for a, b in edges:
-        union(a, b)
-
-    # Assign cluster ids
-    all_assemblies = set(df['assembly_a'].to_list()) | set(df['assembly_b'].to_list())
-    clusters = defaultdict(list)
-    for assembly in all_assemblies:
-        cluster_id = find(assembly)
-        clusters[cluster_id].append(assembly)
-
-    # Get total reads for each assembly
-    total_reads = {}
-    for row in df.iter_rows(named=True):
         total_reads[row['assembly_a']] = row['total_reads_a']
         total_reads[row['assembly_b']] = row['total_reads_b']
-
-    # Prepare output
+        
+        if min_reads == 0:
+            continue
+            
+        share = n_shared / min_reads
+        if share >= threshold:
+            # Store direct connections in both directions
+            direct_connections[row['assembly_a']].add(row['assembly_b'])
+            direct_connections[row['assembly_b']].add(row['assembly_a'])
+    
+    # Get all assemblies
+    all_assemblies = set(df['assembly_a'].to_list()) | set(df['assembly_b'].to_list())
+    
+    # Track which assemblies have been assigned to clusters
+    assigned = set()
+    # Store final cluster assignments
     records = []
-    for cluster_id, members in clusters.items():
-        # Choose exemplar: assembly with max total reads
-        exemplar = max(members, key=lambda c: total_reads.get(c, 0))
-        for assembly in members:
+    # Generate unique cluster IDs
+    next_cluster_id = 1
+    
+    # Keep trying to cluster until no assemblies remain or no more clusters can be formed
+    remaining = list(all_assemblies)
+    while remaining:
+        # Sort remaining assemblies by read count (descending)
+        remaining.sort(key=lambda a: total_reads.get(a, 0), reverse=True)
+        
+        # Try to create a new cluster with the assembly having most reads as exemplar
+        exemplar_candidate = remaining[0]
+        
+        # Find all assemblies directly connected to the exemplar
+        directly_connected = direct_connections[exemplar_candidate]
+        
+        # If exemplar has connections, create a cluster
+        if directly_connected:
+            cluster_id = f"cluster_{next_cluster_id}"
+            next_cluster_id += 1
+            
+            # Add exemplar to cluster
             records.append({
                 'cluster_id': cluster_id,
-                'assembly': assembly,
-                'exemplar': exemplar,
-                'total_reads': total_reads.get(assembly, 0),
-                'is_exemplar': assembly == exemplar
+                'assembly': exemplar_candidate,
+                'exemplar': exemplar_candidate,
+                'total_reads': total_reads.get(exemplar_candidate, 0),
+                'is_exemplar': True
             })
+            assigned.add(exemplar_candidate)
+            
+            # Add directly connected assemblies to cluster
+            for assembly in directly_connected:
+                if assembly not in assigned:  # Only add if not already in a cluster
+                    records.append({
+                        'cluster_id': cluster_id,
+                        'assembly': assembly,
+                        'exemplar': exemplar_candidate,
+                        'total_reads': total_reads.get(assembly, 0),
+                        'is_exemplar': False
+                    })
+                    assigned.add(assembly)
+        else:
+            # If no connections, this assembly forms a singleton cluster
+            cluster_id = f"cluster_{next_cluster_id}"
+            next_cluster_id += 1
+            records.append({
+                'cluster_id': cluster_id,
+                'assembly': exemplar_candidate,
+                'exemplar': exemplar_candidate,
+                'total_reads': total_reads.get(exemplar_candidate, 0),
+                'is_exemplar': True
+            })
+            assigned.add(exemplar_candidate)
+        
+        # Update list of remaining assemblies
+        remaining = [a for a in all_assemblies if a not in assigned]
+    
     return pl.DataFrame(records)
 
 ## read ANI function
