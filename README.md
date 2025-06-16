@@ -21,22 +21,21 @@ As of EsViritu v1.0.0:
 
 ## Schematic
 
-!Update
 
 ![Schematic](schematic/pipeline_schematic_v1.0.0.png)
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
-## Viruses in Database
-
-!Update
 
 ## Interactive report of detected viruses
 
-!Update
-
 ![Example](schematic/example_report_screengrab2.png)
 
+## Viruses in Database
+
+18,203 high quality virus genome assemblies across 44 taxonomic families:
+
+![heattree](schematic/Esviritu_DB_heat_tree_v3.1.0.png)
 
 ## Installation
 

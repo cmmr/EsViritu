@@ -6,6 +6,7 @@ dependencies:
   - python>=3.11.0
   - polars
   - pysam
+  - numpy
   # CLI dependencies
   - minimap2>=2.21
   - samtools>=1.15
