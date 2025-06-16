@@ -90,7 +90,7 @@ def esviritu():
         )
     optional_args.add_argument(
         "-p", "--read_format", 
-        dest="READ_FMT", type=str, default='unpaired',
+        dest="READ_FMT", type=str, default='paired',
         help='unpaired or paired. Format of input reads. If paired, must provide 2 files \
             (R1, then R2) after -r argument.'
         )
@@ -99,7 +99,8 @@ def esviritu():
         dest="DB", type=str, default='default',
         help='path to sequence database. If not set, EsViritu looks for environmental \
             variable ESVIRITU_DB. Then, if this variable is unset, it this is unset, \
-            DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
+            DB path is assumed to be ' + esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0. \
+            As of EsViritu v1.0.0, DB v3.1.0 or higher is required.")
         )
     optional_args.add_argument(
         "-wd", "--working_directory", 
@@ -187,21 +188,24 @@ def esviritu():
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')
     elif args.DB == "default":
-        args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v2.0.2")
+        args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
     db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
     if not os.path.isfile(db_index):
-        logger.error(f'database file not found at {db_index}. exiting.')
+        logger.error(f'database file not found at {db_index}. Exiting. \
+            As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
         sys.exit()
 
     db_fasta = os.path.join(args.DB, "virus_pathogen_database.fna")
     if not os.path.isfile(db_fasta):
-        logger.error(f'database file not found at {db_fasta}. exiting.')
+        logger.error(f'database file not found at {db_fasta}. Exiting. \
+            As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
         sys.exit()
 
     db_metadata = os.path.join(args.DB, "virus_pathogen_database.all_metadata.tsv")
     if not os.path.isfile(db_metadata):
-        logger.error(f'database file not found at {db_metadata}. exiting.')
+        logger.error(f'database file not found at {db_metadata}. Exiting. \
+            As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
         sys.exit()
 
     if args.FILTER_DIR == "default" and os.getenv('ESVIRITU_FILTER') != None:
@@ -221,7 +225,7 @@ def esviritu():
     #print(completedProc.returncode)
     if completedProc.returncode != 0 :
         logger.info("some required R packages are not found. Required:")
-        logger.info("reactable, htmltools, dplyr, reactablefmtr, dataui, data.table, RColorBrewer, viridis, scales, knitr")
+        logger.info("reactable, htmltools, reactablefmtr, scales, magrittr")
         logger.info("Did you activate the conda environment?")
         logger.info("see EsViritu.yml. Exiting")
         sys.exit()
@@ -491,7 +495,7 @@ def esviritu():
         raise
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
-    logger.info(f"reactable report finished in {elapsed_time} seconds")
+    logger.info(f"reactable report finished in {elapsed_time:.2f} seconds")
 
     # optionally removing temporary files
     if args.KEEP:

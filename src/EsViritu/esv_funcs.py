@@ -294,7 +294,7 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
         # Calculate statistics
         covered_bases = np.count_nonzero(coverage)
         mean_cov = np.mean(coverage) if length > 0 else 0
-        read_count = len(primary_reads) ####
+        read_count = len(primary_reads)
         avg_pi = round(statistics.mean(pi_list), 3) if pi_list else 0
 
         return {
@@ -350,21 +350,39 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
     """
     Calls samtools consensus on the given sorted BAM file and writes the consensus FASTA.
     Only outputs consensus for records with aligned reads.
+    Appends "_consensus" to each FASTA record header.
     Returns the path to the consensus FASTA file.
     """
 
     if output_fasta is None:
         output_fasta = bam_path.replace('.bam', '.consensus.fasta')
+    
+    # Create a temporary output file for samtools consensus
+    temp_output = output_fasta + '.temp'
+    
     # samtools consensus command
     cmd = [
         'samtools', 'consensus',
         '-m', 'simple', 
         '-q', '-c', '0.51',
-        '-o', output_fasta,
+        '-o', temp_output,
         bam_path
     ]
     try:
         subprocess.run(cmd, check=True)
+        
+        # Process the FASTA file to append "_consensus" to each header
+        with open(temp_output, 'r') as infile, open(output_fasta, 'w') as outfile:
+            for line in infile:
+                if line.startswith('>'):
+                    # Append "_consensus" to the header line
+                    outfile.write(f"{line.rstrip()}_consensus\n")
+                else:
+                    outfile.write(line)
+                    
+        # Remove temporary file
+        os.remove(temp_output)
+        
     except Exception as e:
         logger.error(f"samtools consensus failed: {cmd}\nError: {e}")
         raise
@@ -510,7 +528,7 @@ def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
             # Get coverage for this window using pileup
             window_length = end - start
             coverage = [0] * window_length
-            for pileupcolumn in bam.pileup(contig=contig, start=start, end=end, stepper="all"):
+            for pileupcolumn in bam.pileup(contig=contig, max_depth = 100_000, start=start, end=end, stepper="all"):
                 pos_in_window = pileupcolumn.pos - start
                 if 0 <= pos_in_window < window_length:
                     coverage[pos_in_window] = pileupcolumn.nsegments
