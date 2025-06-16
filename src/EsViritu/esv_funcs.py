@@ -259,15 +259,16 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
         
         # Get all reads for this contig
         reads = list(bamfile.fetch(contig))
-        if not reads:
+        # only conunting primary alignments
+        primary_reads = [r for r in reads if not r.is_secondary and not r.is_unmapped]
+
+        if not primary_reads:
             return None
 
         # Calculate coverage and base counts in one pass
         base_counts = [Counter() for _ in range(length)]
-        for read in reads:
-            if read.is_secondary and not include_secondary:
-                continue
-                
+
+        for read in primary_reads:
             # Update coverage
             for block in read.get_blocks():
                 coverage[block[0]:block[1]] += 1
@@ -293,7 +294,7 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
         # Calculate statistics
         covered_bases = np.count_nonzero(coverage)
         mean_cov = np.mean(coverage) if length > 0 else 0
-        read_count = len(reads)
+        read_count = len(primary_reads) ####
         avg_pi = round(statistics.mean(pi_list), 3) if pi_list else 0
 
         return {
@@ -717,7 +718,8 @@ def read_ani_from_bam(bam_path):
 
     with pysam.AlignmentFile(bam_path, "rb") as bam:
         for read in bam.fetch(until_eof=True):
-            if read.is_unmapped or read.reference_id is None:
+            # only counting primary alignments
+            if read.is_unmapped or read.is_secondary or read.reference_id is None:
                 continue
             contig = bam.get_reference_name(read.reference_id)
             align_len = read.query_alignment_length
