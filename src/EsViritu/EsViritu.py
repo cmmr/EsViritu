@@ -174,9 +174,7 @@ def esviritu():
 
     READS = ' '.join(map(str,args.READS))
 
-    if len(READS.split()) == 2 and str(args.READ_FMT).lower() == "paired":
-        logger.info(len(READS.split()), str(args.READ_FMT).lower(), "read files")
-    elif len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
+    if len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
         logger.info("if stating --read_format paired, must provide exactly 2 read files")
         sys.exit()
 
