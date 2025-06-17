@@ -39,7 +39,7 @@ sum_coverage <- aggregate(
   FUN = function(x) list(x)
 )
 names(sum_coverage)[2] <- "coverage"
-combined_data <- merge(genome_data, sum_coverage, by = "Accession")
+combined_data <- merge(genome_data, sum_coverage, by = c("sample_ID", "Accession"))
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
 keep <- c(
   "sample_ID", "Name", "Accession", "Segment", "Assembly",
