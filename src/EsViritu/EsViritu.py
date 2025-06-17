@@ -319,14 +319,12 @@ def esviritu():
         sys.exit()
 
     # get aligned reads from initial bam
-    aligned_read1 = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.R1.fastq")
-    aligned_read2 = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.R2.fastq")
+    aligned_reads = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.fastq")
 
     bam_to_paired_fastq_fn = timed_function(logger=logger)(esvf.bam_to_paired_fastq)
     aligned_read_files = bam_to_paired_fastq_fn(
         initial_map_bam,
-        aligned_read1,
-        aligned_read2
+        aligned_reads
     )
 
     # Load virus info metadata table in polars

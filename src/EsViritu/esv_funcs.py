@@ -779,7 +779,7 @@ def bam_has_alignments(bam_path):
 
 ## get .fastq from aligned reads in bam
 
-def bam_to_paired_fastq(bam_path, fastq_r1_path, fastq_r2_path) -> list:
+def bam_to_paired_fastq(bam_path, fastq_path) -> list:
     """
     Extracts paired-end reads from a BAM file and writes them to two FASTQ files (R1 and R2)
     using samtools fastq. Keeps all pairs where at least one mate is aligned.
@@ -789,20 +789,16 @@ def bam_to_paired_fastq(bam_path, fastq_r1_path, fastq_r2_path) -> list:
         fastq_r1_path (str): Path to output FASTQ file for read 1 (R1).
         fastq_r2_path (str): Path to output FASTQ file for read 2 (R2).
     Returns:
-        list: [fastq_r1_path, fastq_r2_path]
+        list: [fastq_path]
     """
 
     cmd = [
         "samtools", "fastq",
-        "-1", fastq_r1_path,
-        "-2", fastq_r2_path,
-        "-0", "/dev/null",  # discard orphan reads
-        "-s", "/dev/null",  # discard singletons
-        "-n",                 # output reads in the same order as input
+        "-o", fastq_path,
         bam_path
     ]
     subprocess.run(cmd, check=True)
-    return [fastq_r1_path, fastq_r2_path]
+    return [fastq_path]
 
 
 def print_esviritu_banner():
