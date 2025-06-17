@@ -318,6 +318,17 @@ def esviritu():
                 logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
         sys.exit()
 
+    # get aligned reads from initial bam
+    aligned_read1 = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.R1.fastq")
+    aligned_read2 = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.R2.fastq")
+
+    bam_to_paired_fastq_fn = timed_function(logger=logger)(esvf.bam_to_paired_fastq)
+    aligned_read_files = bam_to_paired_fastq_fn(
+        initial_map_bam,
+        aligned_read1,
+        aligned_read2
+    )
+
     # Load virus info metadata table in polars
     vir_meta_df = pl.read_csv(
         db_metadata, 
@@ -325,7 +336,11 @@ def esviritu():
         schema_overrides={"TaxID": pl.String}
         )
 
-    ## new read-based clustering
+    #########################
+    ### 1 of 2 clustering ###
+    #########################
+
+    ## read-based clustering, attempt 1
     asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
     initial_read_comp_df = asm_read_sharing_table_fn(
         initial_map_bam,
@@ -353,9 +368,9 @@ def esviritu():
         separator = "\t"
     )
 
-    ## make new fasta file database from aniclust exemplars
-    final_record_getter_fn = timed_function(logger=logger)(esvf.final_record_getter)
-    clust_db_fasta = final_record_getter_fn(
+    ## make new fasta file database from aniclust exemplars, attempt 1
+    clust_record_getter_fn = timed_function(logger=logger)(esvf.clust_record_getter)
+    clust_db_fasta = clust_record_getter_fn(
         i_read_clust_of,
         2,
         vir_meta_df,
@@ -367,39 +382,91 @@ def esviritu():
     )
     logger.info(clust_db_fasta)
 
-    ## re-align (mapped) reads to references based on preliminary consensus .fastas (fill N's??)
+    ## re-align (mapped) reads to clustered references, attempt 1
     sec_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.second.filt.sorted.bam")
 
     minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
     second_map_bam = minimap2_f_fn(
         clust_db_fasta,
-        trim_filt_reads,
+        aligned_read_files,
         str(args.CPU),
         sec_bam_f
     )
 
-    ## take final .bam, make final consensus .fastas
+    #########################
+    ### 2 of 2 clustering ###
+    #########################
+
+    ## read-based clustering, attempt 2
+    sec_read_comp_df = asm_read_sharing_table_fn(
+        second_map_bam,
+        vir_meta_df
+    )
+    sec_read_comp_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.second_read_comp_compare.tsv"
+    )
+    sec_read_comp_df.write_csv(
+        file = sec_read_comp_of,
+        separator = "\t"
+    )
+
+    read_clust_sec_df = cluster_assemblies_by_read_sharinge_fn(
+        sec_read_comp_df
+    )
+    sec_read_clust_of = os.path.join(
+        str(args.TEMP_DIR),
+        f"{str(args.SAMPLE)}.second_read_comp_clust.tsv"
+    )
+    read_clust_sec_df.write_csv(
+        file = sec_read_clust_of,
+        separator = "\t"
+    )
+
+    ## make new fasta file database from aniclust exemplars, attempt 2
+    sec_clust_db_fasta = clust_record_getter_fn(
+        sec_read_clust_of,
+        2,
+        vir_meta_df,
+        clust_db_fasta,
+        os.path.join(
+            str(args.TEMP_DIR),
+            f"{str(args.SAMPLE)}_second_clustered_refs.fasta"
+        )
+    )
+    logger.info(sec_clust_db_fasta)
+    ## re-align (mapped) reads to clustered references, attempt 2
+    third_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.third.filt.sorted.bam")
+
+    third_map_bam = minimap2_f_fn(
+        sec_clust_db_fasta,
+        aligned_read_files,
+        str(args.CPU),
+        third_bam_f
+    )
+
+    ## take third .bam, make final consensus .fastas
     sec_con_f = os.path.join(
         str(args.OUTPUT_DIR),
         f"{str(args.SAMPLE)}_final_consensus.fasta"
     )
     bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
     second_consensus_fasta = bam_to_consensus_fasta_fn(
-        second_map_bam,
+        third_map_bam,
         sec_con_f
     )
     logger.info(second_consensus_fasta)
 
     # Make coverm-like table from final bam
     bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)
-    second_coverm_like_dt = bam_to_coverm_table_fn(
-        second_map_bam,
+    third_coverm_like_dt = bam_to_coverm_table_fn(
+        third_map_bam,
         str(args.SAMPLE),
         int(args.CPU),
         False
     )
 
-    second_coverm_like_dt.write_csv(
+    third_coverm_like_dt.write_csv(
         file = os.path.join(
             args.TEMP_DIR,
             f"{str(args.SAMPLE)}_final_coverm.tsv"
@@ -410,7 +477,7 @@ def esviritu():
     ## Make bedtools-like windows coverage
     bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)
     windows_cov_df = bam_coverage_windows_fn(
-        second_map_bam
+        third_map_bam
     )
 
     windows_of = os.path.join(
@@ -425,7 +492,7 @@ def esviritu():
 
     # get read ANI per contig
     read_ani_df = esvf.read_ani_from_bam(
-        second_map_bam
+        third_map_bam
     )
     rani_of = os.path.join(
         args.TEMP_DIR,
@@ -441,7 +508,7 @@ def esviritu():
 
     assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
     main_out_df, assem_out_df = assembly_table_maker_fn(
-        second_coverm_like_dt,
+        third_coverm_like_dt,
         vir_meta_df,
         read_ani_df,
         filtered_reads,
