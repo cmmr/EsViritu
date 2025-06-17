@@ -781,38 +781,29 @@ def bam_has_alignments(bam_path):
 
 def bam_to_paired_fastq(bam_path, fastq_r1_path, fastq_r2_path) -> list:
     """
-    Extracts paired-end reads from a BAM file and writes them to two FASTQ files (R1 and R2).
-    Only properly paired, primary alignments are written.
+    Extracts paired-end reads from a BAM file and writes them to two FASTQ files (R1 and R2)
+    using samtools fastq. Keeps all pairs where at least one mate is aligned.
 
     Args:
         bam_path (str): Path to input BAM file.
         fastq_r1_path (str): Path to output FASTQ file for read 1 (R1).
         fastq_r2_path (str): Path to output FASTQ file for read 2 (R2).
+    Returns:
+        list: [fastq_r1_path, fastq_r2_path]
     """
-    
-    with pysam.AlignmentFile(bam_path, "rb") as bam, \
-         open(fastq_r1_path, "w") as fq1, \
-         open(fastq_r2_path, "w") as fq2:
-        for read in bam.fetch(until_eof=True):
-            # Skip secondary, supplementary, or unmapped reads
-            if read.is_secondary or read.is_supplementary or read.is_unmapped:
-                continue
-            # Only properly paired reads
-            if not read.is_paired or not read.is_proper_pair:
-                continue
-            # Write R1 and R2
-            if read.is_read1:
-                fq = fq1
-            elif read.is_read2:
-                fq = fq2
-            else:
-                continue
-            # Write FASTQ entry
-            fq.write(f"@{read.query_name}\n{read.query_sequence}\n+\n{read.qual}\n")
-    
+
+    cmd = [
+        "samtools", "fastq",
+        "-1", fastq_r1_path,
+        "-2", fastq_r2_path,
+        "-0", "/dev/null",  # discard orphan reads
+        "-s", "/dev/null",  # discard singletons
+        "-n",                 # output reads in the same order as input
+        bam_path
+    ]
+    subprocess.run(cmd, check=True)
     return [fastq_r1_path, fastq_r2_path]
 
-## do i need new function for second round of clustering?
 
 def print_esviritu_banner():
     print(r"""
