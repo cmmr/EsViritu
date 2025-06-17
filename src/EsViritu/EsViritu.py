@@ -433,6 +433,7 @@ def esviritu():
         )
     )
     logger.info(sec_clust_db_fasta)
+
     ## re-align (mapped) reads to clustered references, attempt 2
     third_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.third.filt.sorted.bam")
 
@@ -454,6 +455,8 @@ def esviritu():
         sec_con_f
     )
     logger.info(second_consensus_fasta)
+
+    #########################
 
     # Make coverm-like table from final bam
     bam_to_coverm_table_fn = timed_function(logger=logger)(esvf.bam_to_coverm_table)

@@ -2,6 +2,7 @@ import argparse
 import os
 import glob
 import polars as pl
+import subprocess
 
 def summarize_esv_runs(directory):
     # Define file types to search for
@@ -11,6 +12,7 @@ def summarize_esv_runs(directory):
         "*.virus_coverage_windows.tsv"
     ]
     
+    output_files = {}
     for pattern in file_patterns:
         file_paths = glob.glob(os.path.join(directory, pattern))
         if not file_paths:
@@ -21,6 +23,10 @@ def summarize_esv_runs(directory):
         for fp in file_paths:
             try:
                 df = pl.read_csv(fp, separator="\t")
+                if pattern == "*.virus_coverage_windows.tsv":
+                    base = os.path.basename(fp)
+                    sample_name = base.removesuffix(".virus_coverage_windows.tsv")
+                    df = df.with_columns(pl.lit(sample_name).alias("sample_ID"))
                 dfs.append(df)
             except Exception as e:
                 print(f"Failed to read {fp}: {e}")
@@ -28,9 +34,31 @@ def summarize_esv_runs(directory):
             merged = pl.concat(dfs, how="vertical_relaxed")
             dir_basename = os.path.basename(os.path.abspath(directory))
             out_name = f"{dir_basename}.{pattern.replace('*.', '')}"
-            out_path = os.path.join(directory, out_name)
+            out_path = os.path.join(os.getcwd(), out_name)
             merged.write_csv(out_path, separator="\t")
             print(f"Wrote merged file: {out_path}")
+            output_files[pattern] = out_path
+
+    # If all three summary tables were made, run the R script
+    if all(p in output_files for p in file_patterns):
+        
+        r_script = os.path.join(os.path.dirname(__file__), "EsViritu_project_reactable.R")
+        coverage_tsv = output_files["*.virus_coverage_windows.tsv"]
+        main_tsv = output_files["*.detected_virus.info.tsv"]
+        output_dir = os.getcwd()
+        # Add two empty string arguments for the 4th and 5th args if needed
+        cmd = [
+            "Rscript", r_script,
+            coverage_tsv,
+            main_tsv,
+            output_dir,
+            os.path.basename(os.path.abspath(directory))
+        ]
+        try:
+            print(f"Generating report: {' '.join(cmd)}")
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            print(f"Failed to run R script: {e}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Summarize EsViritu run outputs across a directory.")

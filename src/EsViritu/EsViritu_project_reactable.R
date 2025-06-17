@@ -8,14 +8,13 @@ suppressMessages(suppressWarnings(library(magrittr)))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) != 5) {
+if (length(args) != 4) {
   stop(
-    "Five arguments must be supplied:
+    "Four arguments must be supplied:
     coverage windows tsv, 
-    then main table tsv, 
-    output directory, 
-    sample_ID,
-    reads_in_sample",
+    main table tsv, 
+    outdir,
+    project_ID",
     call. = FALSE
   )
 }
@@ -35,7 +34,7 @@ genome_data <- read.table(
 )
 coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
 sum_coverage <- aggregate(
-  average_coverage ~ Accession,
+  average_coverage ~ Accession + sample_ID,
   data = coverage_data,
   FUN = function(x) list(x)
 )
@@ -43,7 +42,7 @@ names(sum_coverage)[2] <- "coverage"
 combined_data <- merge(genome_data, sum_coverage, by = "Accession")
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
 keep <- c(
-  "Name", "Accession", "Segment", "Assembly",
+  "sample_ID", "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
   "read_count", "avg_read_identity", "Pi", "genus",
   "species", "subspecies", "coverage"
@@ -117,8 +116,8 @@ if (is_dataui == TRUE) {
     add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
     add_subtitle(
       sprintf(
-        "Generated at %s | %s filtered reads in sample",
-        format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
+        "Generated at %s",
+        format(Sys.time(), "%Y-%m-%d %H:%M")
       )
     ) %>%
     google_font(font_family = "Oswald")
@@ -162,8 +161,8 @@ if (is_dataui == TRUE) {
     add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
     add_subtitle(
       sprintf(
-        "Generated at %s | %s filtered reads in sample",
-        format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
+        "Generated at %s",
+        format(Sys.time(), "%Y-%m-%d %H:%M")
       )
     ) %>%
     google_font(font_family = "Oswald")

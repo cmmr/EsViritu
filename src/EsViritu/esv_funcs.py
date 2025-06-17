@@ -874,4 +874,3 @@ def ghost_banner():
 
 """
     )
-### declare ambiguity for high divergence?
