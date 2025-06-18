@@ -142,7 +142,7 @@ def esviritu():
     # file gets saved to a specified file
     log_file_path = os.path.join(
         out_directory, 
-        f"esviritu_{args.SAMPLE}.log"
+        f"{args.SAMPLE}_esviritu.log"
         )
     try:
         file_handler = logging.FileHandler(log_file_path)
@@ -242,7 +242,7 @@ def esviritu():
     params_dict['log_file'] = log_file_path
 
     # Save to YAML file in the same directory as the log file
-    yaml_file_path = os.path.join(out_directory, f"esviritu_{args.SAMPLE}.params.yaml")
+    yaml_file_path = os.path.join(out_directory, f"{args.SAMPLE}_esviritu.params.yaml")
     try:
         with open(yaml_file_path, 'w') as yaml_file:
             yaml.dump(params_dict, yaml_file, default_flow_style=False)
