@@ -45,9 +45,9 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 !Update 
 
-1)  Create conda environment (tested on `conda` v23.5.0)
+1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.
 
-`conda create -n EsViritu -c conda-forge -c bioconda esviritu biopython`
+`mamba create -n EsViritu -c conda-forge -c bioconda esviritu`
 
 2)  Activate the environment
 
@@ -57,25 +57,33 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 `EsViritu -h`
 
-3)  Download the database (\~300 MB when decompressed).
+3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!
 
-`cd EsViritu` *or `cd` where you want the database to reside*
+`cd` *where you want the database to reside*
 
-`wget https://zenodo.org/records/7876309/files/DB_v2.0.2.tar.gz`
+`mkdir esviritu_DB && cd esviritu_DB`
 
-`md5sum DB_v2.0.2.tar.gz`
+Download the tarball from Zenodo:
 
-should return `8e207e6a9465d7e40e948d7559b014c4`
+`wget https://zenodo.org/records/15693709/files/esviritu_db_v3.1.0.tar.gz`
 
-`tar -xvf DB_v2.0.2.tar.gz`
+Check that the download was successful:
 
-`rm DB_v2.0.2.tar.gz`
+`md5sum esviritu_db_v3.1.0.tar.gz`
 
-DB files should be in `DBs/v2.0.2`
+should return `b043e685be5d3be99ded4fa4709a07de  esviritu_db_v3.1.0.tar.gz`
 
-4)  Set the database path:
+Unpack and remove the tarball:
 
-`conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+`tar -xvf esviritu_db_v3.1.0.tar.gz`
+
+`rm esviritu_db_v3.1.0.tar.gz`
+
+DB files should be in `v3.1.0`
+
+4)  Set the database path (optional but recommended):
+
+`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.1.0`
 
 5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
 
@@ -99,9 +107,9 @@ then:
   
   `cd EsViritu`
   
-  3)  use the file `environment/EsViritu.yml` with `conda create` to generate the environment used with this tool
+  3)  use the file `environment/EsViritu.yml` with `mamba create` to generate the environment used with this tool
   
-  `conda env create --file environment/EsViritu.yml`
+  `mamba env create --file environment/EsViritu.yml`
   
   4)  Activate the environment
   
@@ -111,33 +119,7 @@ then:
   
   `pip install .`
   
-  6)  Download the database (\~300 MB when decompressed).
-  
-  `cd EsViritu` *or `cd` where you want the database to reside*
-  
-  `wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
-  
-  `md5sum DB_v2.0.2.tar.gz`
-  
-  should return `8e207e6a9465d7e40e948d7559b014c4`
-  
-  `tar -xvf DB_v2.0.2.tar.gz`
-  
-  `rm DB_v2.0.2.tar.gz`
-  
-  DB files should be in `DBs/v2.0.2`
-  
-  7)  Set the database path:
-  
-  `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
-  
-  8)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
-  
-  `R`
-  
-  then:
-  
-  `remotes::install_github("timelyportfolio/dataui")`
+  *Now follow the database set up instructions above*
 
 </details>
 
