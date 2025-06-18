@@ -124,8 +124,13 @@ if (is_dataui == TRUE) {
     google_font(font_family = "Oswald")
   
 } else {
-  nice_table <- combined_data %>%
-    select(-coverage) %>%
+  keep_nodataui <- c(
+    "Name", "Accession", "Segment", "Assembly",
+    "Length", "Percent_covered", "RPKMF",
+    "read_count", "avg_read_identity", "Pi", "genus",
+    "species", "subspecies"
+  )
+  nice_table <- combined_data[, keep_nodataui] %>%
     reactable(
       .,
       pagination = TRUE,

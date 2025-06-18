@@ -22,7 +22,10 @@ def summarize_esv_runs(directory):
         dfs = []
         for fp in file_paths:
             try:
-                df = pl.read_csv(fp, separator="\t")
+                df = pl.read_csv(
+                    fp, separator="\t",
+                    infer_schema_length=10000
+                    )
                 if pattern == "*.virus_coverage_windows.tsv":
                     base = os.path.basename(fp)
                     sample_name = base.removesuffix(".virus_coverage_windows.tsv")
