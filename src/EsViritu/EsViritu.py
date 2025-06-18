@@ -318,15 +318,6 @@ def esviritu():
                 logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
         sys.exit()
 
-    # get aligned reads from initial bam
-    aligned_reads = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.aligned.fastq")
-
-    bam_to_paired_fastq_fn = timed_function(logger=logger)(esvf.bam_to_paired_fastq)
-    aligned_read_files = bam_to_paired_fastq_fn(
-        initial_map_bam,
-        aligned_reads
-    )
-
     # Load virus info metadata table in polars
     vir_meta_df = pl.read_csv(
         db_metadata, 
@@ -387,7 +378,6 @@ def esviritu():
     second_map_bam = minimap2_f_fn(
         clust_db_fasta,
         trim_filt_reads,
-        #aligned_read_files,
         str(args.CPU),
         sec_bam_f
     )
@@ -441,7 +431,6 @@ def esviritu():
     third_map_bam = minimap2_f_fn(
         sec_clust_db_fasta,
         trim_filt_reads,
-        #aligned_read_files,
         str(args.CPU),
         third_bam_f
     )
