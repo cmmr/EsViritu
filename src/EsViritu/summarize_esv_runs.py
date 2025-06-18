@@ -48,13 +48,11 @@ def summarize_esv_runs(directory):
         r_script = os.path.join(os.path.dirname(__file__), "EsViritu_project_reactable.R")
         coverage_tsv = output_files["*.virus_coverage_windows.tsv"]
         main_tsv = output_files["*.detected_virus.info.tsv"]
-        output_dir = os.getcwd()
         # Add two empty string arguments for the 4th and 5th args if needed
         cmd = [
             "Rscript", r_script,
             coverage_tsv,
             main_tsv,
-            output_dir,
             os.path.basename(os.path.abspath(directory))
         ]
         try:
