@@ -386,7 +386,8 @@ def esviritu():
     minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
     second_map_bam = minimap2_f_fn(
         clust_db_fasta,
-        aligned_read_files,
+        trim_filt_reads,
+        #aligned_read_files,
         str(args.CPU),
         sec_bam_f
     )
@@ -439,7 +440,8 @@ def esviritu():
 
     third_map_bam = minimap2_f_fn(
         sec_clust_db_fasta,
-        aligned_read_files,
+        trim_filt_reads,
+        #aligned_read_files,
         str(args.CPU),
         third_bam_f
     )
