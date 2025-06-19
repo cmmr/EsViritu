@@ -22,6 +22,7 @@ coverage_data <- read.table(
   sep = "\t",
   header = TRUE,
   stringsAsFactors = FALSE,
+  fill = TRUE,
   quote = ""
 )
 genome_data <- read.table(
@@ -29,6 +30,7 @@ genome_data <- read.table(
   sep = "\t",
   header = TRUE,
   stringsAsFactors = FALSE,
+  fill = TRUE,
   quote = ""
 )
 coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
