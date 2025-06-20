@@ -569,7 +569,7 @@ def esviritu():
     minutes = (esv_elapsed_time % 3600) // 60
     seconds = esv_elapsed_time % 60
 
-    logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours}:{minutes}:{seconds:.2f}")
+    logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours:02d}:{minutes:02d}:{seconds:.2f}")
 
 if __name__ == "__main__":
     esviritu()
