@@ -10,14 +10,17 @@ NOTE: The database used by `Esviritu` should cover all human and animal viruses 
 
 ## Features
 
-As of EsViritu v1.0.0:
+As of EsViritu `v1.0.0`:
 
-1) Single read sensitivity for detection (requires reads >= 100 nt).
+1) Highly curated sequence-to-taxonomy database of known human, animal, and plant viruses.
 
-2) Assembly-aware genome reconstructions for segmented viruses.
+2) Single read sensitivity for detection (requires reads >= 100 nt).
 
-3) Expression of uncertainty (i.e. average read identity to reference, nucleotide diversity measurement).
+3) Assembly-aware genome reconstructions for segmented viruses.
 
+4) Expression of uncertainty (i.e. average read identity to reference, nucleotide diversity measurement).
+
+5) Attractive HTML reports.
 
 ## Schematic
 
@@ -39,11 +42,10 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ## Installation
 
-**Only Installs on Linux** !Update
 
 ### Stable release via Bionconda (recommended)
 
-!Update 
+**NOTE: 2025-06-20 I've merged the updates into the main branch for v1.0.0, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.**
 
 1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.
 
@@ -264,6 +266,7 @@ From `v0.2.3` to `v1.0.0` the tool, while having the same goal, has undergone ve
   - Segmented virus genomes are treated as coherent assemblies by the tool rather than unaffiliated contigs.
   - Genbank records that appeared incomplete based on length and/or number of segments were removed.
   - Genbank records with sequences highly similar to human genomic DNA, vectors, or other common contaminants were removed.
+  - Genbank records without complete taxonomy information (e.g. a virus called picornaviridae sp. lacks genus and species labels) were excluded.
 - All code (other than the .hmtl report) is rewritten in python, making it more robust and reducing dependencies.
 - Read ANI and nucleotide diversity (Pi) calculations are now reported.
 
