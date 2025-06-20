@@ -33,7 +33,7 @@ where = ["src"]
 "EsViritu" = ["*.R"]
 
 [project.scripts]
-EsViritu = "EsViritu.EsViritu:esviritu"
+EsViritu = "EsViritu:esviritu"
 summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
 
 [project.urls]
