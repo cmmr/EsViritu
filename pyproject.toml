@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "EsViritu"
-version = "0.9.0"
+version = "1.0.0"
 authors = [
   { name="Mike Tisza", email="michael.tisza@gmail.com" },
 ]
@@ -33,7 +33,7 @@ where = ["src"]
 "EsViritu" = ["*.R"]
 
 [project.scripts]
-EsViritu = "EsViritu:EsViritu"
+EsViritu = "EsViritu.EsViritu:esviritu"
 summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
 
 [project.urls]

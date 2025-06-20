@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='0.9.0'
+    __version__='1.0.0'
 
     parser = argparse.ArgumentParser(
         description='EsViritu is a read mapping pipeline for detection and measurement of \
