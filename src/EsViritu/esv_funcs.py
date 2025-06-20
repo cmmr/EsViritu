@@ -6,6 +6,7 @@ import json
 import tempfile
 from subprocess import Popen, PIPE, STDOUT
 import sys, os
+import shutil
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from collections import Counter
@@ -127,7 +128,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         return input_fastq
 
 ## fastp stats
-def fastp_stats(reads: list, outdir: str, sample_name: str, 
+def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filtarg: bool,
                 paired: bool = False, threads: int = 4) -> str:
 
     pipeline_stats_fastp_html = os.path.join(outdir, f"{sample_name}.fastp.html")
@@ -136,7 +137,17 @@ def fastp_stats(reads: list, outdir: str, sample_name: str,
     if int(threads) > 16:
         fastp_threads = 16
 
-    if paired:
+    if trimarg and os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json")) and not filtarg:
+        shutil.copy(
+            os.path.join(tempdir, f"{sample_name}.fastp.json"),
+            pipeline_stats_fastp_json
+        )
+        if os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.html")):
+            shutil.copy(
+                os.path.join(tempdir, f"{sample_name}.fastp.html"),
+                pipeline_stats_fastp_html
+            )
+    elif paired:
         read1, read2 = reads
         fastp_stat_paired_cmd = [
             "fastp", "-i", read1, "-I", read2,

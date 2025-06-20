@@ -25,9 +25,12 @@ def esviritu():
 
     __version__='1.0.0'
 
+    esv_start_time = time.perf_counter()
+
     parser = argparse.ArgumentParser(
         description='EsViritu is a read mapping pipeline for detection and measurement of \
-            human and animal virus pathogens from short read metagenomic or clinical samples.\
+            human, animal, and plat virus pathogens from short read libraries. \
+            It is useful for clinical and environmental samples. \
             Version ' + str(__version__)
             )
 
@@ -58,7 +61,7 @@ def esviritu():
     optional_args.add_argument(
         "-t", "--cpu", 
         dest="CPU", type=int, default = os.cpu_count(),
-        help='Example: 32 -- Number of CPUs available for EsViritu.'
+        help='Example: 32 -- Number of CPUs available for EsViritu. Default = all available CPUs'
         )
     optional_args.add_argument(
         '-q', "--qual", dest="QUAL", 
@@ -85,7 +88,7 @@ def esviritu():
     optional_args.add_argument(
         "--keep", 
         dest="KEEP", type=esvf.str2bool, default=False,
-        help='True of False. Keep the intermediate files, located in the temporary directory? \
+        help='True of False. Keep the intermediate files located in the temporary directory? \
             These can add up, so it is not recommended if space is a concern.'
         )
     optional_args.add_argument(
@@ -169,13 +172,10 @@ def esviritu():
             f"{args.SAMPLE}_temp"
         )
     
-    logger.info(args.TEMP_DIR)
-
-
     READS = ' '.join(map(str,args.READS))
 
     if len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
-        logger.info("if stating --read_format paired, must provide exactly 2 read files")
+        logger.warning("if stating --read_format paired, must provide exactly 2 read files")
         sys.exit()
 
     for inr in args.READS:
@@ -213,8 +213,6 @@ def esviritu():
     
     logger.info(f"DB: {str(args.DB)}")
 
-    logger.info(f"filter seqs: {str(args.FILTER_DIR)}")
-
     logger.info(f"version {str(__version__)}")
 
     # check if R script with libraries returns good exit code
@@ -222,10 +220,10 @@ def esviritu():
 
     #print(completedProc.returncode)
     if completedProc.returncode != 0 :
-        logger.info("some required R packages are not found. Required:")
-        logger.info("reactable, htmltools, reactablefmtr, scales, magrittr")
-        logger.info("Did you activate the conda environment?")
-        logger.info("see EsViritu.yml. Exiting")
+        logger.warning("some required R packages are not found. Required:")
+        logger.warning("reactable, htmltools, reactablefmtr, scales, magrittr")
+        logger.warning("Did you activate the conda environment?")
+        logger.warning("see EsViritu.yml. Exiting")
         sys.exit()
 
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
@@ -264,6 +262,8 @@ def esviritu():
     ################################################
     ################################################
     
+    logger.info(f"main read processing starting for {args.SAMPLE}")
+
     trim_filter_fn = timed_function(logger=logger)(esvf.trim_filter)
     trim_filt_reads = trim_filter_fn(
         args.READS,
@@ -277,7 +277,7 @@ def esviritu():
         str(args.CPU)
     )
 
-    logger.info(trim_filt_reads)
+    logger.info(f"trimmed reads: {trim_filt_reads}")
 
     # get read stats for mapping pipeline
     fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
@@ -285,6 +285,8 @@ def esviritu():
         trim_filt_reads,
         str(args.OUTPUT_DIR),
         str(args.SAMPLE),
+        bool(args.QUAL),
+        bool(args.FILTER_SEQS),
         bool(args.READ_FMT),
         str(args.CPU)
     )
@@ -299,7 +301,7 @@ def esviritu():
         init_bam_f
     )
 
-    logger.info(initial_map_bam)
+    logger.info(f"initial bam: {initial_map_bam}")
 
     ## check if any reads aligned or quit
     if not esvf.bam_has_alignments(initial_map_bam):
@@ -369,7 +371,6 @@ def esviritu():
             f"{str(args.SAMPLE)}_clustered_refs.fasta"
         )
     )
-    logger.info(clust_db_fasta)
 
     ## re-align (mapped) reads to clustered references, attempt 1
     sec_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.second.filt.sorted.bam")
@@ -423,7 +424,6 @@ def esviritu():
             f"{str(args.SAMPLE)}_second_clustered_refs.fasta"
         )
     )
-    logger.info(sec_clust_db_fasta)
 
     ## re-align (mapped) reads to clustered references, attempt 2
     third_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.third.filt.sorted.bam")
@@ -445,7 +445,6 @@ def esviritu():
         third_map_bam,
         sec_con_f
     )
-    logger.info(second_consensus_fasta)
 
     #########################
 
@@ -494,7 +493,6 @@ def esviritu():
         file = rani_of,
         separator = "\t"
     )
-    logger.info(rani_of)
 
     ## Make "main" and "assembly" output table
 
@@ -516,7 +514,7 @@ def esviritu():
         separator = "\t"
     )
 
-    logger.info(main_of)
+    logger.info(f"summary table (per contig): {main_of}")
 
     assem_of = os.path.join(
         str(args.OUTPUT_DIR),
@@ -526,8 +524,7 @@ def esviritu():
         file = assem_of,
         separator = "\t"
     )
-
-    logger.info(assem_of)
+    logger.info(f"summary table (per assembly): {assem_of}")
 
     # make the html interactive table with sparklines
 
@@ -564,6 +561,14 @@ def esviritu():
                 logger.info(f"Removed temporary directory {args.TEMP_DIR}")
         except Exception as e:
             logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
+
+    esv_end_time = time.perf_counter()
+    esv_elapsed_time = esv_end_time - esv_start_time
+    hours = esv_elapsed_time // 3600
+    minutes = (esv_elapsed_time % 3600) // 60
+    seconds = esv_elapsed_time % 60
+
+    logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours}:{minutes}:{seconds:.2f}")
 
 if __name__ == "__main__":
     esviritu()
