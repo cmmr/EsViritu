@@ -45,7 +45,7 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Stable release via Bionconda (recommended)
 
-**NOTE: 2025-06-20 I've merged the updates into the main branch for v1.0.0, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.**
+**NOTE: 2025-06-20 I've merged the updates into the main branch for v1.0.1, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.**
 
 1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.
 
