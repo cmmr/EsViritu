@@ -565,8 +565,8 @@ def esviritu():
 
     esv_end_time = time.perf_counter()
     esv_elapsed_time = esv_end_time - esv_start_time
-    hours = esv_elapsed_time // 3600
-    minutes = (esv_elapsed_time % 3600) // 60
+    hours = int(esv_elapsed_time // 3600)
+    minutes = int((esv_elapsed_time % 3600) // 60)
     seconds = esv_elapsed_time % 60
 
     logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours:02d}:{minutes:02d}:{seconds:.2f}")
