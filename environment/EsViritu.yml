@@ -2,34 +2,22 @@ name: EsViritu
 channels:
   - conda-forge
   - bioconda
-  - defaults
 dependencies:
-  - python=3.11.0
-  - blast
-  - r-rcolorbrewer
-  - minimap2[version='>=2.21']
-  - r-scales
-  - r-htmltools
-  - coreutils
-  - dashing[version='>=0.4.0']
-  - bwa-mem2
-  - r-knitr
-  - r-viridis
-  - samtools[version='>=1.9']
-  - bioawk
-  - biopython
-  - r-reactablefmtr
-  - fastani[version='>=1.3']
-  - r-dplyr
-  - r-data.table
-  - r-base
-  - r-remotes
-  - r-reactable
-  - coverm
+  - python>=3.11.0
+  - polars
+  - pysam
+  - numpy
+  - pyyaml
+  # CLI dependencies
+  - minimap2>=2.21
+  - samtools>=1.15
+  - fastp>=0.23.2
   - seqkit
-  - bedtools
-  - r-readxl
-  - r-lubridate
-  - fastp[version='>=0.23.2']
-  - r-stringr
-  - seqfu[version='>=1.17.1']
+  # R dependencies
+  - r-base
+  - r-htmltools
+  - r-scales
+  - r-reactable
+  - r-reactablefmtr
+  - r-magrittr
+  - r-remotes

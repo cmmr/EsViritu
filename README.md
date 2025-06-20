@@ -6,37 +6,50 @@ Read mapping pipeline for detection and measurement of human and animal virus pa
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus genomes with 90% ANI or greater to reference genomes.
 
-NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of November 16th, 2022 (EsViritu DB v2.0.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of May 2025 (EsViritu DB v3.1.0). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+
+## Features
+
+As of EsViritu `v1.0.0`:
+
+1) Highly curated sequence-to-taxonomy database of known human, animal, and plant viruses.
+
+2) Single read sensitivity for detection (requires reads >= 100 nt).
+
+3) Assembly-aware genome reconstructions for segmented viruses.
+
+4) Expression of uncertainty (i.e. average read identity to reference, nucleotide diversity measurement).
+
+5) Attractive HTML reports.
 
 ## Schematic
 
-![Schematic](schematic/pipeline_schematic.png)
+
+![Schematic](schematic/pipeline_schematic_v1.0.0.png)
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
+
 ## Interactive report of detected viruses
 
-![Example](schematic/example_report_screengrab1.png)
+![Example](schematic/example_report_screengrab2.png)
 
-## Threshold of detection
+## Viruses in Database
 
-Virus genomes or segments are considered "detected" if:
+18,203 high quality virus genome assemblies across 44 taxonomic families:
 
-1)  at least 1000 nucletides of the reference genome/segment have coverage by 1 or more reads
-
-**OR**
-
-2)  at least 50% of the nucelotides of the reference genome/segment have coverage by 1 or more reads (relevant for references under 2 kb)
+![heattree](schematic/Esviritu_DB_heat_tree_v3.1.0.png)
 
 ## Installation
 
-**Only Installs on Linux**
 
 ### Stable release via Bionconda (recommended)
 
-1)  Create conda environment (tested on `conda` v23.5.0)
+**NOTE: 2025-06-20 I've merged the updates into the main branch for v1.0.0, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.**
 
-`conda create -n EsViritu -c conda-forge -c bioconda esviritu biopython`
+1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.
+
+`mamba create -n EsViritu -c conda-forge -c bioconda esviritu`
 
 2)  Activate the environment
 
@@ -46,25 +59,33 @@ Virus genomes or segments are considered "detected" if:
 
 `EsViritu -h`
 
-3)  Download the database (\~300 MB when decompressed).
+3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!
 
-`cd EsViritu` *or `cd` where you want the database to reside*
+`cd` *where you want the database to reside*
 
-`wget https://zenodo.org/records/7876309/files/DB_v2.0.2.tar.gz`
+`mkdir esviritu_DB && cd esviritu_DB`
 
-`md5sum DB_v2.0.2.tar.gz`
+Download the tarball from Zenodo:
 
-should return `8e207e6a9465d7e40e948d7559b014c4`
+`wget https://zenodo.org/records/15693709/files/esviritu_db_v3.1.0.tar.gz`
 
-`tar -xvf DB_v2.0.2.tar.gz`
+Check that the download was successful:
 
-`rm DB_v2.0.2.tar.gz`
+`md5sum esviritu_db_v3.1.0.tar.gz`
 
-DB files should be in `DBs/v2.0.2`
+should return `b043e685be5d3be99ded4fa4709a07de  esviritu_db_v3.1.0.tar.gz`
 
-4)  Set the database path:
+Unpack and remove the tarball:
 
-`conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
+`tar -xvf esviritu_db_v3.1.0.tar.gz`
+
+`rm esviritu_db_v3.1.0.tar.gz`
+
+DB files should be in `v3.1.0`
+
+4)  Set the database path (optional but recommended):
+
+`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.1.0`
 
 5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
 
@@ -88,9 +109,9 @@ then:
   
   `cd EsViritu`
   
-  3)  use the file `environment/EsViritu.yml` with `conda create` to generate the environment used with this tool
+  3)  use the file `environment/EsViritu.yml` with `mamba create` to generate the environment used with this tool
   
-  `conda env create --file environment/EsViritu.yml`
+  `mamba env create --file environment/EsViritu.yml`
   
   4)  Activate the environment
   
@@ -100,33 +121,7 @@ then:
   
   `pip install .`
   
-  6)  Download the database (\~300 MB when decompressed).
-  
-  `cd EsViritu` *or `cd` where you want the database to reside*
-  
-  `wget https://zenodo.org/record/7876309/files/DB_v2.0.2.tar.gz`
-  
-  `md5sum DB_v2.0.2.tar.gz`
-  
-  should return `8e207e6a9465d7e40e948d7559b014c4`
-  
-  `tar -xvf DB_v2.0.2.tar.gz`
-  
-  `rm DB_v2.0.2.tar.gz`
-  
-  DB files should be in `DBs/v2.0.2`
-  
-  7)  Set the database path:
-  
-  `conda env config vars set ESVIRITU_DB=/path/to/DBs/v2.0.2`
-  
-  8)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
-  
-  `R`
-  
-  then:
-  
-  `remotes::install_github("timelyportfolio/dataui")`
+  *Now follow the database set up instructions above*
 
 </details>
 
@@ -156,7 +151,9 @@ You could filter unwanted sequences out upstream of this tool, but this will all
 
 Here are instructions for downloading and formatting the human genome and phiX spike-in (3 GB decompressed).
 
-```         
+**NOTE: When analyzing sequences from human tissues processed via hybrid capture virome sequencing, quantification may be more accurate if human reads are NOT removed**
+
+```
 cd EsViritu ### or `cd` where you want the filter_seqs to reside
 mkdir filter_seqs && cd filter_seqs
 
@@ -185,17 +182,17 @@ Remember to set `-f True` to run the filtering step.
 -   inputs are .fastq files
 
 1)  (OPTIONAL) Reads are filtered for quality and length, adapters are removed, then reads mapping to human genome or phiX spike in are removed. Must set flags `-q True -f True`.
-2)  Filtered reads are aligned to a dereplicated database of human and animal virus genomes/segments. (read alignment: \>= 90% ANI and \>= 90% read coverage)
-3)  Consensus sequences of each detected reference genome/segment are determined, then all consensus sequences are compared pair-wise to detect and dereplicate near-identical sequences.
+2)  Filtered reads are aligned to a dereplicated database of human, animal, and plant virus genomes/segments. (read alignment: \>= 80% ANI, \>= 100 nt aligned, and \>= 90% read coverage)
+3)  Candidate reference genomes are dereplicated. First, a network of references (binned at the assembly level) sharing \>= 33% of reads aligned (union of read IDs) is generated. Then, local maxima references are determined by total reads aligned. These references are carried forward for final quantification.
 4)  The reads from the original alignment are re-aligned to the dereplicated references.
-5)  Consensus sequences are determined for each detected dereplicated genome/segment. `*.final.consensus.with_NNs.fasta`
-6)  breadth, depth, and abundance of read coverage is determined for each detected genome/segment.
-7)  Percent identity is calculated between each consensus and it's reference. `*consensus_to_refence.tsv`
-8)  With this information and taxonomical data on each reference, a summary table `*.threshold.info.tsv` and a reactable (interactive table) with a visualization of read coverage `*.reactable.html` is generated.
+5)  breadth, depth, abundance, average read identity, and nucleotide diversity (Pi) is determined for each detected genome/segment.
+6)  Summary tables are generated for the contig level `*.detected_virus.info.tsv` and the assembly level `*.detected_virus.assembly_summary.tsv`
+7)  Consensus sequences are determined for each detected dereplicated genome/segment. `*_final_consensus.fasta`
+8)  A reactable (interactive table) with a visualization of read coverage profile `*.reactable.html` is generated.
 
 # Running the tool
 
-**I have only tested this on Linux and I doubt it would work on MacOS or Windows**
+**I have only tested this on Linux and I doubt it would work on MacOS or Windows** !Update
 
 You might run this as part of a bash script, do your own upstream read processing, etc, but these are the basic instructions.
 
@@ -204,8 +201,6 @@ You might run this as part of a bash script, do your own upstream read processin
 `-r reads file (.fastq)`
 
 `-s sample name`
-
-`-t # of threads`
 
 `-o output directory (may be shared with other samples)`
 
@@ -217,26 +212,20 @@ Individual samples can be run with the python script. E.g.:
 
 **Basic run with 1 .fastq file:**
 
-```         
-EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
-```
-
-**Using multiple input .fastq files (also, see paired end input below)**
-
-```         
-EsViritu -r /path/to/reads/myreads1.fastq /path/to/reads/myreads2.fastq /path/to/reads/myreads3.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1
+```bash
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1
 ```
 
 **Using paired end input .fastq files. Must be exactly 2 files.**
 
-```         
-EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -p paired
+```bash
+EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s sample_ABC -o myproject_EsViritu1 -p paired
 ```
 
 **With pre-filtering steps:**
 
-```         
-EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -t 16 -o myproject_EsViritu_general1 -q True -f True
+```bash
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -q True -f True
 ```
 
 **Help menu**
@@ -247,36 +236,40 @@ EsViritu -h
 
 ## Make a Summary for Batch of Reports
 
-Run the batch summary bash script with the following arguments:
-
-1)  Directory containing the output files (`*.threshold.info.tsv` & `*.mean_cov.tsv` for each sample)
-2)  Name/stem for output files
+Run the batch summary script to collate reports from several sequencing libraries in a project:
 
 Example:
 
 Activate conda environment: `conda activate EsViritu`
 
-Then:
+Then run the `summarize_esv_runs` command with the relative path to the output directory as the only argument:
 
-```         
-bash /path/to/EsViritu/src/EsViritu/make_summary_batch_of_samples1.sh myproject_EsViritu_general1 myproject_report_out
+```bash
+summarize_esv_runs myproject_EsViritu1
 ```
 
-This command will generate the table `myproject_report_out.coverm.combined.tax.tsv` and the reactable `myproject_report_out.batch_detected_viruses.html` both of which summarize information about all the samples in the given directory.
+This command will generate the tables `myproject_EsViritu1.detected_virus.info.tsv`, `myproject_EsViritu1.detected_virus.assembly_summary.tsv` and the reactable `myproject_EsViritu1.batch_detected_viruses.html`, which summarize information about all the samples in the given directory.
 
 # Limitations and Considerations
 
 Because this tool is based on mapping to reference genomes, recombination and reassortment can cause some issues.
 
-For example, strains of picornaviruses naturally recombine with other strains. So, if the virus genome in your sample is a recombinant between the 5' half of "Picornavirus Strain A" and the 3' half of "Picornavirus Strain B", the output from `Esviritu` will indicate that you have both "Picornavirus Strain A" and "Picornavirus Strain B" in your sample. In these cases, it's useful to look at the html reports to analyze coverage across the genome(s).
-
-Primarily, we have tested this tool on samples enriched for viruses using hybrid-probe capture (e.g. TWIST Comprehensive Virus Research Panel) because most samples, even those from clinical infections, have a low relative abundance of viral nucleic acid as compared to nucleic acids from host or other microbes. However, we expect that this tool will work with bulk WGS or RNA-seq when a handful of reads from a virus genome are present in a .fastq file.
+For example, strains of picornaviruses naturally recombine with other strains. So, if the virus genome in your sample is a recombinant between the 5' half of "Picornavirus Strain A" and the 3' half of "Picornavirus Strain B", the output from `Esviritu` will indicate that you have both "Picornavirus Strain A" and "Picornavirus Strain B" in your sample. In these cases, it's useful to look at the html reports to analyze coverage across the genome(s). Based on our testing, this only happens with recombinant viruses that have no records in GenBank.
 
 RPKMF, the abundance metric used in `EsViritu` is:
 
 `(Reads Per Kilobase of reference genome)/(Million reads passing Filtering)`
 
-For the file `*consensus_seqs_vs_ref_seqs.tsv`, expect `percent_ANI` to be a bit low, as `samtools consensus` (used to generate consensus sequences) is used with conservative settings, so a relatively high number of "N"s may be encoded in the consensus sequence.
+From `v0.2.3` to `v1.0.0` the tool, while having the same goal, has undergone very extensive code refactoring, logic, and database updates. These include:
+- The database is completely redone and increased in size by ~2.5X.
+  - Subspecies taxonomy labels are added (not in GenBank records) for SARS-CoV-2, Norovirus, Mpox, Rotavirus.
+  - Segmented virus genomes are treated as coherent assemblies by the tool rather than unaffiliated contigs.
+  - Genbank records that appeared incomplete based on length and/or number of segments were removed.
+  - Genbank records with sequences highly similar to human genomic DNA, vectors, or other common contaminants were removed.
+  - Genbank records without complete taxonomy information (e.g. a virus called picornaviridae sp. lacks genus and species labels) were excluded.
+- All code (other than the .hmtl report) is rewritten in python, making it more robust and reducing dependencies.
+- Read ANI and nucleotide diversity (Pi) calculations are now reported.
+
 
 # Citation
 

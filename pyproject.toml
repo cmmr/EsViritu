@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "EsViritu"
-version = "0.2.3"
+version = "1.0.0"
 authors = [
   { name="Mike Tisza", email="michael.tisza@gmail.com" },
 ]
 description = "Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -18,17 +18,23 @@ classifiers = [
 ]
 dependencies = [
     "numpy",    
-    "biopython",
+    "polars",
+    "pysam",
+    "logging-utils",
+    "numpy",
+    "pyyaml"
 ]
+
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"EsViritu" = ["*.R", "*.sh"]
+"EsViritu" = ["*.R"]
 
-[project.scripts]  
-EsViritu = "EsViritu:EsViritu"
+[project.scripts]
+EsViritu = "EsViritu:esviritu"
+summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
 
 [project.urls]
 "Homepage" = "https://github.com/cmmr/EsViritu"
