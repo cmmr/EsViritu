@@ -287,6 +287,7 @@ def esviritu():
         str(args.SAMPLE),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
+        str(args.TEMP_DIR),
         bool(args.READ_FMT),
         str(args.CPU)
     )

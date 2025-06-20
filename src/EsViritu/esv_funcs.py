@@ -129,7 +129,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
 
 ## fastp stats
 def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filtarg: bool,
-                paired: bool = False, threads: int = 4) -> str:
+                tempdir: str, paired: bool = False, threads: int = 4) -> str:
 
     pipeline_stats_fastp_html = os.path.join(outdir, f"{sample_name}.fastp.html")
     pipeline_stats_fastp_json = os.path.join(outdir, f"{sample_name}.fastp.json")
