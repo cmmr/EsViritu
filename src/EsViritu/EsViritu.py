@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.0.1'
+    __version__='1.0.2'
 
     esv_start_time = time.perf_counter()
 
@@ -273,7 +273,7 @@ def esviritu():
         bool(args.FILTER_SEQS),
         str(args.SAMPLE),
         str(filter_db_fasta),
-        bool(args.READ_FMT),
+        str(args.READ_FMT),
         str(args.CPU)
     )
 
@@ -288,7 +288,7 @@ def esviritu():
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
         str(args.TEMP_DIR),
-        bool(args.READ_FMT),
+        str(args.READ_FMT),
         str(args.CPU)
     )
 
@@ -567,9 +567,9 @@ def esviritu():
     esv_elapsed_time = esv_end_time - esv_start_time
     hours = int(esv_elapsed_time // 3600)
     minutes = int((esv_elapsed_time % 3600) // 60)
-    seconds = esv_elapsed_time % 60
+    seconds = int(esv_elapsed_time % 60)
 
-    logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours:02d}:{minutes:02d}:{seconds:.2f}")
+    logger.info(f"EsViritu run for {args.SAMPLE} finished in {hours:02d}:{minutes:02d}:{seconds:02d}")
 
 if __name__ == "__main__":
     esviritu()

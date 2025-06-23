@@ -37,7 +37,7 @@ def is_tool(name):
     return find_executable(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
-                filter_db: str = None, paired: bool = False, threads: int = 4) -> list:
+                filter_db: str = None, paired: str = "paired", threads: int = 4) -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
     Args:
@@ -47,7 +47,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         trim: bool, whether to perform quality trimming with fastp.
         filter: bool, whether to filter reads mapping to filter_db with minimap2.
         filter_db: str, path to fasta file for minimap2 filtering (required if filter=True).
-        paired: bool, whether reads are paired-end.
+        paired: str, "paired" or "unpaired".
         threads: int, number of threads to use.
     Returns:
         str: path to output fastq file with processed reads.
@@ -66,10 +66,12 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
     input_fastq = list(reads)
     if int(threads) > 16:
         fastp_threads = 16
+    else:
+        fastp_threads = int(threads)
     # Step 1: Quality trim with fastp
     if trim:
 
-        if paired:
+        if paired == "paired":
             read1, read2 = reads
             trimmed1 = os.path.join(tempdir, f"{sample_name}_R1.trimmed.fastq")
             trimmed2 = os.path.join(tempdir, f"{sample_name}_R2.trimmed.fastq")
@@ -93,7 +95,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if filter_db is None:
             raise ValueError("filter_db must be provided if filter=True")
         # Build commands for piping
-        if paired:
+        if paired == "paired":
             read1, read2 = input_fastq
             minimap2_cmd = [
                 "minimap2", "-t", str(threads), "-ax", "sr", filter_db, read1, read2
@@ -104,7 +106,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
             ]
         samtools_view_cmd = ["samtools", "view", "-bS", "-"]
         samtools_sort_cmd = ["samtools", "sort", "-"]
-        if paired:
+        if paired == "paired":
             unmapped_fastq1 = filtered_fastq.replace(".fastq", "_R1.fastq")
             unmapped_fastq2 = filtered_fastq.replace(".fastq", "_R2.fastq")
             samtools_fastq_cmd = ["samtools", "fastq", "-f", "4", "-1", unmapped_fastq1, "-2", unmapped_fastq2, "-"]
@@ -121,7 +123,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         p3.stdout.close()
         p4.communicate()
 
-        if paired:
+        if paired == "paired":
             output_fastq = [unmapped_fastq1, unmapped_fastq2]
         return output_fastq
     else:
@@ -129,13 +131,15 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
 
 ## fastp stats
 def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filtarg: bool,
-                tempdir: str, paired: bool = False, threads: int = 4) -> str:
+                tempdir: str, paired: str = "paired", threads: int = 4) -> str:
 
     pipeline_stats_fastp_html = os.path.join(outdir, f"{sample_name}.fastp.html")
     pipeline_stats_fastp_json = os.path.join(outdir, f"{sample_name}.fastp.json")
 
     if int(threads) > 16:
         fastp_threads = 16
+    else:
+        fastp_threads = int(threads)
 
     if trimarg and os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json")) and not filtarg:
         shutil.copy(
@@ -147,7 +151,7 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
                 os.path.join(tempdir, f"{sample_name}.fastp.html"),
                 pipeline_stats_fastp_html
             )
-    elif paired:
+    elif paired == "paired":
         read1, read2 = reads
         fastp_stat_paired_cmd = [
             "fastp", "-i", read1, "-I", read2,
