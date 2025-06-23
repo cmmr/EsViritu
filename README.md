@@ -6,7 +6,7 @@ Read mapping pipeline for detection and measurement of human and animal virus pa
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus genomes with 90% ANI or greater to reference genomes.
 
-NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of May 2025 (EsViritu DB v3.1.0). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of May 2025 (EsViritu DB v3.1.1). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
 
 ## Features
 
@@ -45,49 +45,49 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Stable release via Bionconda (recommended)
 
-**NOTE: 2025-06-20 I've merged the updates into the main branch for v1.0.1, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.**
+*NOTE: 2025-06-23 I've merged the updates into the main branch for v1.0.2, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.*
 
-1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.
+**1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
-`mamba create -n EsViritu -c conda-forge -c bioconda esviritu`
+`mamba create -n EsViritu bioconda::esviritu`
 
-2)  Activate the environment
+**2)  Activate the environment with `conda`**
 
 `conda activate EsViritu`
 
-*should be able to run help menu:*
+*you should be able to run help menu:*
 
 `EsViritu -h`
 
-3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!
+**3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!**
 
 `cd` *where you want the database to reside*
 
 `mkdir esviritu_DB && cd esviritu_DB`
 
-Download the tarball from Zenodo:
+Download the tarball of DB `v3.1.1` (most recent version) from Zenodo:
 
-`wget https://zenodo.org/records/15693709/files/esviritu_db_v3.1.0.tar.gz`
+`wget https://zenodo.org/records/15723755/files/esviritu_db_v3.1.1.tar.gz`
 
 Check that the download was successful:
 
-`md5sum esviritu_db_v3.1.0.tar.gz`
+`md5sum esviritu_db_v3.1.1.tar.gz`
 
-should return `b043e685be5d3be99ded4fa4709a07de  esviritu_db_v3.1.0.tar.gz`
+should return `509e875db51a335ccce5663d126d1fcf  esviritu_db_v3.1.1.tar.gz`
 
 Unpack and remove the tarball:
 
-`tar -xvf esviritu_db_v3.1.0.tar.gz`
+`tar -xvf esviritu_db_v3.1.1.tar.gz`
 
-`rm esviritu_db_v3.1.0.tar.gz`
+`rm esviritu_db_v3.1.1.tar.gz`
 
-DB files should be in `v3.1.0`
+DB files should be in `v3.1.1`
 
-4)  Set the database path (optional but recommended):
+**4)  Set the database path (optional but recommended):**
 
-`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.1.0`
+`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.1.1`
 
-5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.
+**5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
 
 `R`
 
@@ -133,9 +133,9 @@ then:
   
   **Please note that, while I WAS able to get this to run using `Docker`/`Docker Desktop` on my Mac, I am not a `Docker` expert, and I may be unable to troubleshoot issues.**
   
-  1)  Pull Docker image (v0.2.3 shown below)
+  1)  Pull Docker image (v1.0.1 shown below)
   
-  `docker pull quay.io/biocontainers/esviritu:0.2.3--pyhdfd78af_0`
+  `docker pull quay.io/biocontainers/esviritu:1.0.1--pyhdfd78af_0`
   
   *Notes:* 
   
@@ -192,7 +192,6 @@ Remember to set `-f True` to run the filtering step.
 
 # Running the tool
 
-**I have only tested this on Linux and I doubt it would work on MacOS or Windows** !Update
 
 You might run this as part of a bash script, do your own upstream read processing, etc, but these are the basic instructions.
 
@@ -213,7 +212,7 @@ Individual samples can be run with the python script. E.g.:
 **Basic run with 1 .fastq file:**
 
 ```bash
-EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -p unpaired
 ```
 
 **Using paired end input .fastq files. Must be exactly 2 files.**
@@ -225,7 +224,7 @@ EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s s
 **With pre-filtering steps:**
 
 ```bash
-EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -q True -f True
+EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -q True -f True -p unpaired
 ```
 
 **Help menu**
