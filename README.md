@@ -45,7 +45,7 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Stable release via Bionconda (recommended)
 
-*NOTE: 2025-06-23 I've merged the updates into the main branch for v1.0.2, and it will take a few days for the bioconda recipe to be live. Use Developmental version instructions.*
+*NOTE: 2025-06-24 EsViritu v1.0.2 is available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -133,9 +133,9 @@ then:
   
   **Please note that, while I WAS able to get this to run using `Docker`/`Docker Desktop` on my Mac, I am not a `Docker` expert, and I may be unable to troubleshoot issues.**
   
-  1)  Pull Docker image (v1.0.1 shown below)
+  1)  Pull Docker image (v1.0.2 shown below)
   
-  `docker pull quay.io/biocontainers/esviritu:1.0.1--pyhdfd78af_0`
+  `docker pull quay.io/biocontainers/esviritu:1.0.2--pyhdfd78af_0`
   
   *Notes:* 
   
