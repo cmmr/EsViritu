@@ -33,7 +33,7 @@ where = ["src"]
 
 [project.scripts]
 EsViritu = "EsViritu:esviritu"
-summarize_esv_runs = "EsViritu.summarize_esv_runs:main"
+summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
 
 [project.urls]
 "Homepage" = "https://github.com/cmmr/EsViritu"

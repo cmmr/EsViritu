@@ -4,7 +4,17 @@ import glob
 import polars as pl
 import subprocess
 
-def summarize_esv_runs(directory):
+def summarize_esv_runs():
+    """CLI entry point for the `summarize_esv_runs` console script."""
+    parser = argparse.ArgumentParser(
+        description="Summarize EsViritu run outputs across a directory."
+    )
+    parser.add_argument(
+        "directory",
+        type=str,
+        help="Directory containing EsViritu .tsv outputs",
+    )
+    args = parser.parse_args()
     # Define file types to search for
     file_patterns = [
         "*.detected_virus.info.tsv",
@@ -14,7 +24,7 @@ def summarize_esv_runs(directory):
     
     output_files = {}
     for pattern in file_patterns:
-        file_paths = glob.glob(os.path.join(directory, pattern))
+        file_paths = glob.glob(os.path.join(args.directory, pattern))
         if not file_paths:
             print(f"No files found for pattern: {pattern}")
             continue
@@ -35,7 +45,7 @@ def summarize_esv_runs(directory):
                 print(f"Failed to read {fp}: {e}")
         if dfs:
             merged = pl.concat(dfs, how="vertical_relaxed")
-            dir_basename = os.path.basename(os.path.abspath(directory))
+            dir_basename = os.path.basename(os.path.abspath(args.directory))
             out_name = f"{dir_basename}.{pattern.replace('*.', '')}"
             out_path = os.path.join(os.getcwd(), out_name)
             merged.write_csv(out_path, separator="\t")
@@ -53,7 +63,7 @@ def summarize_esv_runs(directory):
             "Rscript", r_script,
             coverage_tsv,
             main_tsv,
-            os.path.basename(os.path.abspath(directory))
+            os.path.basename(os.path.abspath(args.directory))
         ]
         try:
             print(f"Generating report: {' '.join(cmd)}")
@@ -61,19 +71,5 @@ def summarize_esv_runs(directory):
         except Exception as e:
             print(f"Failed to run R script: {e}")
 
-def main():
-    """CLI entry point for the `summarize_esv_runs` console script."""
-    parser = argparse.ArgumentParser(
-        description="Summarize EsViritu run outputs across a directory."
-    )
-    parser.add_argument(
-        "directory",
-        type=str,
-        help="Directory containing EsViritu .tsv outputs",
-    )
-    args = parser.parse_args()
-    summarize_esv_runs(args.directory)
-
-
 if __name__ == "__main__":
-    main()
+    summarize_esv_runs()
