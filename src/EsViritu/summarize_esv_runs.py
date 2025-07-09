@@ -61,8 +61,19 @@ def summarize_esv_runs(directory):
         except Exception as e:
             print(f"Failed to run R script: {e}")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Summarize EsViritu run outputs across a directory.")
-    parser.add_argument("directory", type=str, help="Directory containing EsViritu .tsv outputs")
+def main():
+    """CLI entry point for the `summarize_esv_runs` console script."""
+    parser = argparse.ArgumentParser(
+        description="Summarize EsViritu run outputs across a directory."
+    )
+    parser.add_argument(
+        "directory",
+        type=str,
+        help="Directory containing EsViritu .tsv outputs",
+    )
     args = parser.parse_args()
     summarize_esv_runs(args.directory)
+
+
+if __name__ == "__main__":
+    main()
