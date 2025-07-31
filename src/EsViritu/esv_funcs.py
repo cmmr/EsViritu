@@ -205,7 +205,7 @@ def minimap2_f(reference: str,
         '--sam-hit-only', "--MD",
         '-f', '1000',
         '-N' '100',
-        '-p', '0.90',
+        '-p', '0.50',
         reference, 
         *reads
         ]
