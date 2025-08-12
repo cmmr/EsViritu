@@ -13,6 +13,7 @@ from collections import Counter
 import statistics
 from typing import Dict, Tuple
 from collections import defaultdict, Counter
+import shutil
 
 logger = logging.getLogger("esv_logger")
 
