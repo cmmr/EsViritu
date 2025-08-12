@@ -13,7 +13,7 @@ from collections import Counter
 import statistics
 from typing import Dict, Tuple
 from collections import defaultdict, Counter
-from distutils.spawn import find_executable
+
 logger = logging.getLogger("esv_logger")
 
 
@@ -34,7 +34,7 @@ def str2bool(v):
 def is_tool(name):
     """Check whether `name` is on PATH."""
     
-    return find_executable(name) is not None
+    return shutil.which(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
                 filter_db: str = None, paired: str = "paired", threads: int = 4) -> list:
