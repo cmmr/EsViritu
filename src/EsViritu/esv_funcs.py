@@ -505,6 +505,8 @@ def assembly_table_maker(
         pl.col("read_count").sum().alias("read_count"),
         #covered_bases
         pl.col("covered_bases").sum().alias("covered_bases"),
+        # read ANI
+        pl.col("avg_read_identity").mean().alias("avg_read_identity"),
         #Accessions
         pl.col("Accession").flatten(),
         #Segments
