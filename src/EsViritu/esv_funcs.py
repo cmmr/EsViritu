@@ -13,6 +13,7 @@ from collections import Counter
 import statistics
 from typing import Dict, Tuple
 from collections import defaultdict, Counter
+import shutil
 
 logger = logging.getLogger("esv_logger")
 
@@ -203,7 +204,7 @@ def minimap2_f(reference: str,
         '--secondary=yes', 
         '--secondary-seq',
         '--sam-hit-only', "--MD",
-        '-f', '1000',
+        '-f', '10000',
         '-N' '100',
         '-p', '0.90',
         reference, 
@@ -504,6 +505,8 @@ def assembly_table_maker(
         pl.col("read_count").sum().alias("read_count"),
         #covered_bases
         pl.col("covered_bases").sum().alias("covered_bases"),
+        # read ANI
+        pl.col("avg_read_identity").mean().alias("avg_read_identity"),
         #Accessions
         pl.col("Accession").flatten(),
         #Segments
@@ -569,17 +572,28 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
     For a given BAM file and meta_df (with 'Accession' and 'Assembly'),
     filter out contigs with no aligned reads, group contigs by Assembly, and compare each pair of contigs within each Assembly
     based on how many read IDs they share (primary or secondary alignments).
-    Returns a polars DataFrame with Assembly, contig pairs, number of shared reads, and share of total reads for each contig.
+    Returns a polars DataFrame with Assembly, contig pairs, number of shared reads, share of total reads for each contig,
+    and the average read identity for each assembly.
     """
     bamfile = pysam.AlignmentFile(bam_path, "rb")
 
-    # Step 1: Collect read IDs for each contig
+    # Step 1: Collect read IDs and read identities for each contig
     contig_reads = defaultdict(set)
+    contig_read_identities = defaultdict(list)
     for read in bamfile.fetch(until_eof=True):
         if read.is_unmapped:
             continue
         contig = bamfile.get_reference_name(read.reference_id)
         contig_reads[contig].add(read.query_name)
+        # Calculate read identity if possible
+        try:
+            align_len = read.query_alignment_length
+            nm = read.get_tag('NM') if read.has_tag('NM') else None
+            if nm is not None and align_len > 0:
+                identity = (align_len - nm) / align_len
+                contig_read_identities[contig].append(identity)
+        except Exception:
+            pass
         # Also add for secondary alignments
         if read.has_tag("SA"):
             contig_reads[contig].add(read.query_name)
@@ -587,6 +601,7 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
 
     # Step 2: Filter out contigs with no reads
     contig_reads = {k: v for k, v in contig_reads.items() if v}
+    contig_read_identities = {k: v for k, v in contig_read_identities.items() if v}
     if not contig_reads:
         return pl.DataFrame([])
 
@@ -602,23 +617,34 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
         if assembly is not None:
             assembly_to_contigs[assembly].append(contig)
 
-    # Step 4: Build assembly-level read sets
+    # Step 4: Build assembly-level read sets and average identities
     assembly_reads = {}
+    assembly_identities = {}
     for assembly, contigs in assembly_to_contigs.items():
         reads = set()
+        identities = []
         for contig in contigs:
             reads.update(contig_reads[contig])
+            identities.extend(contig_read_identities.get(contig, []))
         assembly_reads[assembly] = reads
+        # Calculate average read identity for the assembly
+        if identities:
+            avg_identity = float(np.mean(identities))
+        else:
+            avg_identity = float('nan')
+        assembly_identities[assembly] = avg_identity
 
     # Step 5: Compare each pair of assemblies for shared reads
     assemblies = list(assembly_reads.keys())
     records = []
     for i, a in enumerate(assemblies):
         reads_a = assembly_reads[a]
+        avg_id_a = assembly_identities.get(a, float('nan'))
         # this will do a self-self comparison so contigs without any sharing don't get missed
         for j in range(i, len(assemblies)):
             b = assemblies[j]
             reads_b = assembly_reads[b]
+            avg_id_b = assembly_identities.get(b, float('nan'))
             shared = reads_a & reads_b
             if shared:
                 n_shared = len(shared)
@@ -633,7 +659,9 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
                     "total_reads_b": tot_b,
                     "n_shared_reads": n_shared,
                     "share_of_a": share_a,
-                    "share_of_b": share_b
+                    "share_of_b": share_b,
+                    "avg_read_identity_a": avg_id_a,
+                    "avg_read_identity_b": avg_id_b
                 })
     return pl.DataFrame(records)
 
@@ -684,10 +712,26 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
     # Keep trying to cluster until no assemblies remain or no more clusters can be formed
     remaining = list(all_assemblies)
     while remaining:
-        # Sort remaining assemblies by read count (descending)
-        remaining.sort(key=lambda a: total_reads.get(a, 0), reverse=True)
+        # Sort remaining assemblies by read count (descending), breaking ties by highest avg_read_identity
+        def get_avg_identity(a):
+            # Try both possible columns for avg_read_identity
+            val = None
+            if 'avg_read_identity_a' in df.columns:
+                # Get max value for this assembly as either a or b
+                vals = df.filter((pl.col('assembly_a') == a) | (pl.col('assembly_b') == a))
+                vals_a = vals.filter(pl.col('assembly_a') == a)
+                vals_b = vals.filter(pl.col('assembly_b') == a)
+                id_a = vals_a['avg_read_identity_a'].to_list() if 'avg_read_identity_a' in vals_a.columns else []
+                id_b = vals_b['avg_read_identity_b'].to_list() if 'avg_read_identity_b' in vals_b.columns else []
+                all_ids = [x for x in id_a + id_b if x is not None]
+                if all_ids:
+                    val = max(all_ids)
+            if val is None:
+                return float('-inf')
+            return val
+        remaining.sort(key=lambda a: (total_reads.get(a, 0), get_avg_identity(a)), reverse=True)
         
-        # Try to create a new cluster with the assembly having most reads as exemplar
+        # Try to create a new cluster with the assembly having most reads (break ties by avg_read_identity) as exemplar
         exemplar_candidate = remaining[0]
         
         # Find all assemblies directly connected to the exemplar
