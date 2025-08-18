@@ -114,7 +114,7 @@ if (is_dataui == TRUE) {
             statline = "min",
             statline_color = "black"
           )))) %>% 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[3])) %>%
     add_subtitle(
       sprintf(
         "Generated at %s",
@@ -164,7 +164,7 @@ if (is_dataui == TRUE) {
           format = colFormat(percent = TRUE, digits = 1)
         )
       )) %>% 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[4])) %>%
+    add_title(sprintf("%s EsViritu Detected virus Summary", args[3])) %>%
     add_subtitle(
       sprintf(
         "Generated at %s",
