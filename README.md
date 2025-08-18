@@ -79,7 +79,7 @@ Download the tarball of DB `v3.2.2` (most recent version) from Zenodo:
 
 Check that the download was successful:
 
-`md5sum esviritu_db_v3.2.2.tar.gzz`
+`md5sum esviritu_db_v3.2.2.tar.gz`
 
 should return `fb6850259b82d39dab104f4b9145f04d  esviritu_db_v3.2.2.tar.gz`
 
