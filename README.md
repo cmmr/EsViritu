@@ -6,7 +6,7 @@ Read mapping pipeline for detection and measurement of human and animal virus pa
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus genomes with 90% ANI or greater to reference genomes.
 
-NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of May 2025 (EsViritu DB v3.1.1). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+NOTE: The database used by `Esviritu` should cover all human and animal viruses in GenBank as of August 2025 (EsViritu DB v3.2.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
 
 ## Features
 
@@ -36,16 +36,22 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ## Viruses in Database
 
-18,203 high quality virus genome assemblies across 44 taxonomic families:
+19,327 high quality virus genome assemblies across 44 taxonomic families:
 
-![heattree](schematic/Esviritu_DB_heat_tree_v3.1.0.png)
+![heattree](schematic/Esviritu_DB_heat_tree_v3.2.2.crop.png)
 
 ## Installation
+
+### Current Versions
+
+Code: **v1.1.0**
+
+Database: **v3.2.2**
 
 
 ### Stable release via Bionconda (recommended)
 
-*NOTE: 2025-06-24 EsViritu v1.0.2 is available on bioconda.*
+*NOTE: 2025-08-18 EsViritu v1.1.0 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -61,31 +67,33 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 **3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!**
 
+[![Database DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16898905.svg)](https://doi.org/10.5281/zenodo.16898905)
+
 `cd` *where you want the database to reside*
 
 `mkdir esviritu_DB && cd esviritu_DB`
 
-Download the tarball of DB `v3.1.1` (most recent version) from Zenodo:
+Download the tarball of DB `v3.2.2` (most recent version) from Zenodo:
 
-`wget https://zenodo.org/records/15723755/files/esviritu_db_v3.1.1.tar.gz`
+`wget https://zenodo.org/records/16898905/files/esviritu_db_v3.2.2.tar.gz`
 
 Check that the download was successful:
 
-`md5sum esviritu_db_v3.1.1.tar.gz`
+`md5sum esviritu_db_v3.2.2.tar.gzz`
 
-should return `509e875db51a335ccce5663d126d1fcf  esviritu_db_v3.1.1.tar.gz`
+should return `fb6850259b82d39dab104f4b9145f04d  esviritu_db_v3.2.2.tar.gz`
 
 Unpack and remove the tarball:
 
-`tar -xvf esviritu_db_v3.1.1.tar.gz`
+`tar -xvf esviritu_db_v3.2.2.tar.gz`
 
-`rm esviritu_db_v3.1.1.tar.gz`
+`rm esviritu_db_v3.2.2.tar.gz`
 
-DB files should be in `v3.1.1`
+DB files should be in `v3.2.2/`
 
 **4)  Set the database path (optional but recommended):**
 
-`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.1.1`
+`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.2`
 
 **5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
 
@@ -183,7 +191,7 @@ Remember to set `-f True` to run the filtering step.
 
 1)  (OPTIONAL) Reads are filtered for quality and length, adapters are removed, then reads mapping to human genome or phiX spike in are removed. Must set flags `-q True -f True`.
 2)  Filtered reads are aligned to a dereplicated database of human, animal, and plant virus genomes/segments. (read alignment: \>= 80% ANI, \>= 100 nt aligned, and \>= 90% read coverage)
-3)  Candidate reference genomes are dereplicated. First, a network of references (binned at the assembly level) sharing \>= 33% of reads aligned (union of read IDs) is generated. Then, local maxima references are determined by total reads aligned. These references are carried forward for final quantification.
+3)  Candidate reference genomes are dereplicated. First, a network of references (binned at the assembly level) sharing \>= 33% of reads aligned (union of read IDs) is generated. Then, local maxima references are determined by total reads aligned. Read ANI is calculated to break ties if two references have identical count of reads aligned. These references are carried forward for final quantification.
 4)  The reads from the original alignment are re-aligned to the dereplicated references.
 5)  breadth, depth, abundance, average read identity, and nucleotide diversity (Pi) is determined for each detected genome/segment.
 6)  Summary tables are generated for the contig level `*.detected_virus.info.tsv` and the assembly level `*.detected_virus.assembly_summary.tsv`
