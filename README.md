@@ -10,7 +10,7 @@ NOTE: The database used by `Esviritu` should cover all human and animal viruses 
 
 ## Features
 
-As of EsViritu `v1.0.0`:
+As of EsViritu `v1.0.0` (and later):
 
 1) Highly curated sequence-to-taxonomy database of known human, animal, and plant viruses.
 
@@ -141,9 +141,9 @@ then:
   
   **Please note that, while I WAS able to get this to run using `Docker`/`Docker Desktop` on my Mac, I am not a `Docker` expert, and I may be unable to troubleshoot issues.**
   
-  1)  Pull Docker image (v1.0.2 shown below)
+  1)  Pull Docker image (v1.1.0 shown below)
   
-  `docker pull quay.io/biocontainers/esviritu:1.0.2--pyhdfd78af_0`
+  `docker pull quay.io/biocontainers/esviritu:1.1.0--pyhdfd78af_0`
   
   *Notes:* 
   
@@ -201,7 +201,7 @@ Remember to set `-f True` to run the filtering step.
 # Running the tool
 
 
-You might run this as part of a bash script, do your own upstream read processing, etc, but these are the basic instructions.
+You might run this as part of a bash script, snakemake pipeline, do your own upstream read processing, etc, but these are the basic instructions.
 
 *Required inputs:*
 
