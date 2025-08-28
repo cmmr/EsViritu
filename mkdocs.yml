@@ -1,0 +1,23 @@
+site_name: EsViritu
+site_description: "Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples."
+repo_url: https://github.com/cmmr/EsViritu
+repo_name: cmmr/EsViritu
+
+docs_dir: docs
+# Keep it simple to avoid extra dependencies on RTD
+theme:
+  name: readthedocs
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Pipeline Description: pipeline-description.md
+  - Using EsViritu: esviritu-usage.md
+  - Data Directory: data-directory.md
+  - Interpretting Outputs: interpretting-outputs.md
+  - Notable Changes in v1: notable-changes.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
