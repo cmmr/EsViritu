@@ -6,7 +6,7 @@ Read mapping pipeline for detection and measurement of human and animal virus pa
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus reads with 80% ANI or greater to reference genomes.
 
-See documentation and manual on the dedicated ReadTheDocs [site]()
+See documentation and manual on the dedicated ReadTheDocs [site](https://esviritu.readthedocs.io/en/latest/)
 ## Features
 
 As of EsViritu `v1.0.0` (and later):
@@ -102,7 +102,7 @@ then:
 
 `remotes::install_github("timelyportfolio/dataui")`
 
-**See development and container installation guides in the [documentation]().
+**See development and container installation guides in the [documentation](https://esviritu.readthedocs.io/en/latest/).
 
 # Running the tool
 
