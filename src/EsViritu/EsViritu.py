@@ -307,8 +307,7 @@ def esviritu():
     ## check if any reads aligned or quit
     if not esvf.bam_has_alignments(initial_map_bam):
         logger.error(
-            f"No reads aligned to the EsViritu DB in {initial_map_bam}",
-            f"Exiting..."
+            f"No reads aligned to the EsViritu DB in {initial_map_bam}. Exiting..."
         )
         if args.KEEP:
             logger.info(f"keeping temp files in {args.TEMP_DIR}")
