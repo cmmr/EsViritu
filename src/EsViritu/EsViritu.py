@@ -51,8 +51,9 @@ def esviritu():
     required_args.add_argument(
         "-o", "--output_dir", 
         dest="OUTPUT_DIR", type=str, required=True, 
-        help='Output directory name. Will be created if it does not exist. \
-            Can be shared with other samples. No space characters, please. '
+        help='Output directory name (not a path). Will be created if it does not exist. \
+            Can be shared with other samples. No space characters, please. \
+            See also --working_directory to create at another path.'
         )
 
     optional_args = parser.add_argument_group(' OPTIONAL ARGUMENTS for EsViritu.')
@@ -168,7 +169,7 @@ def esviritu():
     
     if str(args.TEMP_DIR) == "default":
         args.TEMP_DIR = os.path.join(
-            args.OUTPUT_DIR,
+            out_directory,
             f"{args.SAMPLE}_temp"
         )
     
@@ -267,7 +268,7 @@ def esviritu():
     trim_filter_fn = timed_function(logger=logger)(esvf.trim_filter)
     trim_filt_reads = trim_filter_fn(
         args.READS,
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         str(args.TEMP_DIR),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
@@ -283,7 +284,7 @@ def esviritu():
     fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
     filtered_reads = fastp_stats_fn(
         trim_filt_reads,
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         str(args.SAMPLE),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
@@ -413,7 +414,7 @@ def esviritu():
         separator = "\t"
     )
 
-    ## make new fasta file database from aniclust exemplars, attempt 2
+    ## make new fasta file database from exemplars, attempt 2
     sec_clust_db_fasta = clust_record_getter_fn(
         sec_read_clust_of,
         2,
@@ -437,7 +438,7 @@ def esviritu():
 
     ## take third .bam, make final consensus .fastas
     sec_con_f = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}_final_consensus.fasta"
     )
     bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
@@ -472,7 +473,7 @@ def esviritu():
     )
 
     windows_of = os.path.join(
-        args.OUTPUT_DIR,
+        out_directory,
         f"{str(args.SAMPLE)}.virus_coverage_windows.tsv"
     )
 
@@ -506,7 +507,7 @@ def esviritu():
     )
 
     main_of = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}.detected_virus.info.tsv"
     )
     main_out_df.write_csv(
@@ -517,7 +518,7 @@ def esviritu():
     logger.info(f"summary table (per contig): {main_of}")
 
     assem_of = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}.detected_virus.assembly_summary.tsv"
     )
     assem_out_df.write_csv(
@@ -538,7 +539,7 @@ def esviritu():
         'Rscript', reactableR_path,
         windows_of,
         main_of,
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         str(args.SAMPLE),
         str(filtered_reads)
         ]

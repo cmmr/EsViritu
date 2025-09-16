@@ -859,6 +859,72 @@ def bam_to_paired_fastq(bam_path, fastq_path) -> list:
     subprocess.run(cmd, check=True)
     return [fastq_path]
 
+## make subspecies tax profile
+def tax_profile(assem_df: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """
+    Create taxonomic profiles at both subspecies and species levels from assembly dataframe.
+    Records with avg_read_identity < 95% are labeled as "unclassified" 
+    at the subspecies level.
+    Records with avg_read_identity < 90% are labeled as "unclassified" 
+    at the species level.
+
+    Args:
+        assem_df: Assembly dataframe from assembly_table_maker (second return value)
+        
+    Returns:
+        tuple: (subspecies_profile, species_profile) DataFrames
+    """
+    
+    # Create subspecies classification based on read identity threshold
+    subspecies_df = assem_df.with_columns(
+        pl.when(pl.col("avg_read_identity") < 95.0)
+        .then(
+            pl.lit("t__unclassified ") + 
+            pl.col("species").str.replace("^s__", "").str.replace("^unclassified ", "")
+        )
+        .otherwise(pl.col("subspecies"))
+        .alias("subspecies_classification")
+    )
+    
+    # Create species classification based on read identity threshold
+    species_df = assem_df.with_columns(
+        pl.when(pl.col("avg_read_identity") < 90.0)
+        .then(
+            pl.lit("s__unclassified ") + 
+            pl.col("genus").str.replace("^g__", "").str.replace("^unclassified ", "")
+        )
+        .otherwise(pl.col("species"))
+        .alias("species_classification")
+    )
+    
+    # Group by taxonomic levels including the new subspecies classification
+    subspecies_profile = subspecies_df.group_by([
+        "sample_ID", "filtered_reads_in_sample", "kingdom", "phylum", 
+        "tclass", "order", "family", "genus", "species", "subspecies_classification"
+    ]).agg([
+        pl.col("read_count").sum().alias("read_count"),
+        pl.col("RPKMF").sum().alias("RPKMF"),
+        pl.col("avg_read_identity").mean().alias("avg_read_identity"),
+        pl.col("Assembly").unique().alias("assembly_list")
+    ]).sort([
+        "family", "genus", "species", "subspecies_classification"
+    ])
+    
+    # Group by taxonomic levels including the new species classification
+    species_profile = species_df.group_by([
+        "sample_ID", "filtered_reads_in_sample", "kingdom", "phylum", 
+        "tclass", "order", "family", "genus", "species_classification"
+    ]).agg([
+        pl.col("read_count").sum().alias("read_count"),
+        pl.col("RPKMF").sum().alias("RPKMF"),
+        pl.col("avg_read_identity").mean().alias("avg_read_identity"),
+        pl.col("Assembly").unique().alias("assembly_list")
+    ]).sort([
+        "family", "genus", "species_classification"
+    ])
+    
+    return subspecies_profile, species_profile
+
 
 def print_esviritu_banner():
     print(r"""
