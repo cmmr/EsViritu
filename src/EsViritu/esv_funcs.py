@@ -81,14 +81,22 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
                 "-o", trimmed1, "-O", trimmed2,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
-            subprocess.run(fastp_cmd, check=True)
+            try:
+                subprocess.run(fastp_cmd, check=True)
+            except Exception as e:
+                logger.error(f"fastp paired trimming failed: {fastp_cmd}\nError: {e}")
+                raise
             input_fastq = [trimmed1, trimmed2]
         else:
             fastp_cmd = [
                 "fastp", "--in1", reads[0], "--out1", trimmed_fastq,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
-            subprocess.run(fastp_cmd, check=True)
+            try:
+                subprocess.run(fastp_cmd, check=True)
+            except Exception as e:
+                logger.error(f"fastp single-end trimming failed: {fastp_cmd}\nError: {e}")
+                raise
             input_fastq = [trimmed_fastq]
 
     # Step 2: Filter with minimap2 + pysam
@@ -183,7 +191,7 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
             data = json.load(f)
             total_reads = data["summary"]["before_filtering"]["total_reads"]
     except Exception as e:
-        logging.warning(f"Could not parse total_reads from fastp JSON: {e}")
+        logger.warning(f"Could not parse total_reads from fastp JSON: {e}")
     return total_reads
 
 
@@ -856,7 +864,11 @@ def bam_to_paired_fastq(bam_path, fastq_path) -> list:
         "-o", fastq_path,
         bam_path
     ]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except Exception as e:
+        logger.error(f"samtools fastq failed: {cmd}\nError: {e}")
+        raise
     return [fastq_path]
 
 ## make subspecies tax profile
