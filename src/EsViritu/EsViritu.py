@@ -112,6 +112,12 @@ def esviritu():
         help=f"Default: {def_workdir} -- Set working directory with absolute or relative path. \
             Run directory will be created within."
         )
+    optional_args.add_argument(
+        "-mmK", "--minimap2-K", 
+        dest="MMK", type=str, default="500M", 
+        help=f"Default: 500M -- minimap2 K parameter for Number of bases loaded \
+            into memory to process in a mini-batch. Reducing this value lowers memory consumption"
+        )
 
     args = parser.parse_args()
 
@@ -275,7 +281,8 @@ def esviritu():
         str(args.SAMPLE),
         str(filter_db_fasta),
         str(args.READ_FMT),
-        str(args.CPU)
+        str(args.CPU),
+        str(args.MMK)
     )
 
     logger.info(f"trimmed reads: {trim_filt_reads}")
@@ -300,7 +307,8 @@ def esviritu():
         db_index,
         trim_filt_reads,
         str(args.CPU),
-        init_bam_f
+        init_bam_f,
+        str(args.MMK)
     )
 
     logger.info(f"initial bam: {initial_map_bam}")
@@ -381,7 +389,8 @@ def esviritu():
         clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
-        sec_bam_f
+        sec_bam_f,
+        str(args.MMK)
     )
 
     #########################
@@ -433,7 +442,8 @@ def esviritu():
         sec_clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
-        third_bam_f
+        third_bam_f,
+        str(args.MMK)
     )
 
     ## take third .bam, make final consensus .fastas

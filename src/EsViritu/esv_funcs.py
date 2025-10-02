@@ -38,7 +38,7 @@ def is_tool(name):
     return shutil.which(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
-                filter_db: str = None, paired: str = "paired", threads: int = 4) -> list:
+                filter_db: str = None, paired: str = "paired", threads: int = 4, mmk: str = "500M") -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
     Args:
@@ -50,6 +50,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         filter_db: str, path to fasta file for minimap2 filtering (required if filter=True).
         paired: str, "paired" or "unpaired".
         threads: int, number of threads to use.
+        mmk: str, minimap2 -K parameter
     Returns:
         str: path to output fastq file with processed reads.
     """
@@ -107,11 +108,11 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if paired == "paired":
             read1, read2 = input_fastq
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", filter_db, read1, read2
+                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, read1, read2
             ]
         else:
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", filter_db, input_fastq[0]
+                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, input_fastq[0]
             ]
         samtools_view_cmd = ["samtools", "view", "-bS", "-"]
         samtools_sort_cmd = ["samtools", "sort", "-"]
@@ -196,14 +197,19 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
 
 
 
-def minimap2_f(reference: str, 
-                   reads: list, 
-                   cpus: str,
-                   sorted_outbf) -> str:
+def minimap2_f(reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M") -> str:
 
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
-    then filter low quality alignments
+    then filter low quality alignments.
+    Args:
+        reference: reference genome index.
+        reads: list of fastq read file(s)
+        cpus: number of CPUs to use for minimap2
+        sorted_outbf: sorted bam file name
+        mmk: -K parameter for minimap2
+    Returns:
+        sorted_outbf
     '''
     
     mini2_command = [
@@ -215,6 +221,7 @@ def minimap2_f(reference: str,
         '-f', '10000',
         '-N' '100',
         '-p', '0.90',
+        '-K', mmk,
         reference, 
         *reads
         ]
