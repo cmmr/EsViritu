@@ -222,17 +222,6 @@ def esviritu():
 
     logger.info(f"version {str(__version__)}")
 
-    # check if R script with libraries returns good exit code
-    completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
-
-    #print(completedProc.returncode)
-    if completedProc.returncode != 0 :
-        logger.warning("some required R packages are not found. Required:")
-        logger.warning("reactable, htmltools, reactablefmtr, scales, magrittr")
-        logger.warning("Did you activate the conda environment?")
-        logger.warning("see EsViritu.yml. Exiting")
-        sys.exit()
-
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
     
     for tool in tool_dep_list:
@@ -537,30 +526,41 @@ def esviritu():
     )
     logger.info(f"summary table (per assembly): {assem_of}")
 
-    # make the html interactive table with sparklines
+    # check if R script with libraries returns good exit code
+    completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
 
-    logger.info(f"generating reactable report...")
-    start_time = time.perf_counter()
-    reactableR_path = os.path.join(
-        os.path.dirname(__file__), 
-        'EsViritu_general_reactable1.R'
-        )
-    reactablecmd = [
-        'Rscript', reactableR_path,
-        windows_of,
-        main_of,
-        str(out_directory),
-        str(args.SAMPLE),
-        str(filtered_reads)
-        ]
-    try:
-        subprocess.run(reactablecmd, check=True)
-    except Exception as e:
-        logger.error(f"report generation failed: {reactablecmd}\nError: {e}")
-        raise
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    logger.info(f"reactable report finished in {elapsed_time:.2f} seconds")
+    if completedProc.returncode == 0 :
+
+        # make the html interactive table with sparklines
+        logger.info(f"generating reactable report...")
+        start_time = time.perf_counter()
+        reactableR_path = os.path.join(
+            os.path.dirname(__file__), 
+            'EsViritu_general_reactable1.R'
+            )
+        reactablecmd = [
+            'Rscript', reactableR_path,
+            windows_of,
+            main_of,
+            str(out_directory),
+            str(args.SAMPLE),
+            str(filtered_reads)
+            ]
+        try:
+            subprocess.run(reactablecmd, check=True)
+        except Exception as e:
+            logger.error(f"report generation failed: {reactablecmd}\nError: {e}")
+            raise
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        logger.info(f"reactable report finished in {elapsed_time:.2f} seconds")
+
+    else:
+        logger.warning("some required R packages are not found. Required:")
+        logger.warning("reactable, htmltools, reactablefmtr, scales, magrittr")
+        logger.warning("HTML report not being created.")
+        logger.warning("Did you activate the conda environment?")
+        logger.warning("see EsViritu.yml.")
 
     # optionally removing temporary files
     if args.KEEP:
