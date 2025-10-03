@@ -290,7 +290,7 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
         
         # Get all reads for this contig
         reads = list(bamfile.fetch(contig))
-        # only conunting primary alignments
+        # only counting primary alignments
         primary_reads = [r for r in reads if not r.is_secondary and not r.is_unmapped]
 
         if not primary_reads:
