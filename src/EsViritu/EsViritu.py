@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.1.0'
+    __version__='1.1.1'
 
     esv_start_time = time.perf_counter()
 
@@ -118,7 +118,18 @@ def esviritu():
         help=f"Default: 500M -- minimap2 K parameter for Number of bases loaded \
             into memory to process in a mini-batch. Reducing this value lowers memory consumption"
         )
-
+    optional_args.add_argument(
+        "--species-threshold", 
+        dest="spthresh", type=float, default=0.90, 
+        help=f"Default: 0.90 -- minimum ANI of reads to reference to classify record at species level.\
+            There is no perfect metric for this."
+        )
+    optional_args.add_argument(
+        "--subspecies-threshold", 
+        dest="subspthresh", type=float, default=0.95, 
+        help=f"Default: 0.95 -- minimum ANI of reads to reference to classify record at subspecies level.\
+            There is no perfect metric for this."
+        )
     args = parser.parse_args()
 
 
@@ -525,6 +536,22 @@ def esviritu():
         separator = "\t"
     )
     logger.info(f"summary table (per assembly): {assem_of}")
+
+    tax_fn = timed_function(logger=logger)(esvf.tax_profile)
+    tax_df = tax_fn(
+        assem_out_df,
+        float(args.spthresh),
+        float(args.subspthresh)
+    )
+
+    tax_of = os.path.join(
+        str(out_directory),
+        f"{str(args.SAMPLE)}.tax_profile.tsv"
+    )
+    tax_df.write_csv(
+        file = tax_of,
+        separator = "\t"
+    )
 
     # check if R script with libraries returns good exit code
     completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])

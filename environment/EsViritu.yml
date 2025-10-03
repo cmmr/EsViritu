@@ -9,7 +9,7 @@ dependencies:
   - numpy
   - pyyaml
   # CLI dependencies
-  - minimap2>=2.21
+  - minimap2>=2.25
   - samtools>=1.15
   - fastp>=0.23.2
   - seqkit

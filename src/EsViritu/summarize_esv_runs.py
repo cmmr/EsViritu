@@ -19,7 +19,8 @@ def summarize_esv_runs():
     file_patterns = [
         "*.detected_virus.info.tsv",
         "*.detected_virus.assembly_summary.tsv",
-        "*.virus_coverage_windows.tsv"
+        "*.virus_coverage_windows.tsv",
+        "*.tax_profile.tsv"
     ]
     
     output_files = {}
