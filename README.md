@@ -160,7 +160,7 @@ Then run the `summarize_esv_runs` command with the relative path to the output d
 summarize_esv_runs myproject_EsViritu1
 ```
 
-This command will generate the tables `myproject_EsViritu1.detected_virus.info.tsv`, `myproject_EsViritu1.detected_virus.assembly_summary.tsv` and the reactable `myproject_EsViritu1.batch_detected_viruses.html`, which summarize information about all the samples in the given directory.
+This command will generate the tables `myproject_EsViritu1.detected_virus.info.tsv`, `myproject_EsViritu1.detected_virus.assembly_summary.tsv`, `myproject_EsViritu1.tax_profile.tsv` and the reactable `myproject_EsViritu1.batch_detected_viruses.html`, which summarize information about all the samples in the given directory.
 
 # Citation
 

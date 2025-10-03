@@ -15,6 +15,12 @@ Location: `<OUTPUT_DIR>/`
   - Per-assembly summary table.
   - Aggregates contig-level results at the assembly level.
 
+- `<SAMPLE>.tax_profile.tsv`
+  -Taxonomic profile table.
+  - Assigns taxonomy to records based on average nucleotide identity to reference
+  - See `--species-threshold` (default 0.90)
+  - See `--subspecies-threshold` (default 0.95)
+
 - `<SAMPLE>.virus_coverage_windows.tsv`
   - Coverage in fixed windows across each reference contig.
   - Useful for visualizing coverage profiles and drops/gaps.
@@ -86,3 +92,22 @@ Location: `<OUTPUT_DIR>/`
 | window_start | int | 0-based start coordinate (inclusive). |
 | window_end | int | 0-based end coordinate (exclusive). |
 | average_coverage | float | Mean read depth across the window. |
+
+### *SAMPLE*.tax_profile.tsv
+
+| Column | Type | Description |
+|---|---|---|
+| sample_ID | string | Sample name provided via `--sample`. |
+| filtered_reads_in_sample | int | Total filtered reads used for normalization. |
+| kingdom | string | Taxonomic rank. |
+| phylum | string | Taxonomic rank. |
+| tclass | string | Taxonomic class (named `tclass` to avoid keyword collision). |
+| order | string | Taxonomic rank. |
+| family | string | Taxonomic rank. |
+| genus | string | Taxonomic rank. |
+| species | string | Species classification; may be `s__unclassified <genus>` when `avg_read_identity` < `--species-threshold`. |
+| subspecies | string | Subspecies classification; may be `t__unclassified <species>` when `avg_read_identity` < `--subspecies-threshold`. |
+| read_count | int | Sum of reads aligned to assemblies contributing to this taxon. |
+| RPKMF | float | Sum of RPKMF across assemblies in this taxon. |
+| avg_read_identity | float | Mean read identity across assemblies in this taxon. |
+| assembly_list | string | Comma-separated list of assemblies contributing to this row. |
