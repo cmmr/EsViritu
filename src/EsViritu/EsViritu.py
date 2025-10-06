@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.1.0'
+    __version__='1.1.1'
 
     esv_start_time = time.perf_counter()
 
@@ -51,8 +51,9 @@ def esviritu():
     required_args.add_argument(
         "-o", "--output_dir", 
         dest="OUTPUT_DIR", type=str, required=True, 
-        help='Output directory name. Will be created if it does not exist. \
-            Can be shared with other samples. No space characters, please. '
+        help='Output directory name (not a path). Will be created if it does not exist. \
+            Can be shared with other samples. No space characters, please. \
+            See also --working_directory to create at another path.'
         )
 
     optional_args = parser.add_argument_group(' OPTIONAL ARGUMENTS for EsViritu.')
@@ -111,7 +112,24 @@ def esviritu():
         help=f"Default: {def_workdir} -- Set working directory with absolute or relative path. \
             Run directory will be created within."
         )
-
+    optional_args.add_argument(
+        "-mmK", "--minimap2-K", 
+        dest="MMK", type=str, default="50M", 
+        help=f"Default: 500M -- minimap2 K parameter for Number of bases loaded \
+            into memory to process in a mini-batch. Reducing this value lowers memory consumption"
+        )
+    optional_args.add_argument(
+        "--species-threshold", 
+        dest="spthresh", type=float, default=0.90, 
+        help=f"Default: 0.90 -- minimum ANI of reads to reference to classify record at species level.\
+            There is no perfect metric for this."
+        )
+    optional_args.add_argument(
+        "--subspecies-threshold", 
+        dest="subspthresh", type=float, default=0.95, 
+        help=f"Default: 0.95 -- minimum ANI of reads to reference to classify record at subspecies level.\
+            There is no perfect metric for this."
+        )
     args = parser.parse_args()
 
 
@@ -168,7 +186,7 @@ def esviritu():
     
     if str(args.TEMP_DIR) == "default":
         args.TEMP_DIR = os.path.join(
-            args.OUTPUT_DIR,
+            out_directory,
             f"{args.SAMPLE}_temp"
         )
     
@@ -215,17 +233,6 @@ def esviritu():
 
     logger.info(f"version {str(__version__)}")
 
-    # check if R script with libraries returns good exit code
-    completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
-
-    #print(completedProc.returncode)
-    if completedProc.returncode != 0 :
-        logger.warning("some required R packages are not found. Required:")
-        logger.warning("reactable, htmltools, reactablefmtr, scales, magrittr")
-        logger.warning("Did you activate the conda environment?")
-        logger.warning("see EsViritu.yml. Exiting")
-        sys.exit()
-
     tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools']
     
     for tool in tool_dep_list:
@@ -267,14 +274,15 @@ def esviritu():
     trim_filter_fn = timed_function(logger=logger)(esvf.trim_filter)
     trim_filt_reads = trim_filter_fn(
         args.READS,
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         str(args.TEMP_DIR),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
         str(args.SAMPLE),
         str(filter_db_fasta),
         str(args.READ_FMT),
-        str(args.CPU)
+        str(args.CPU),
+        str(args.MMK)
     )
 
     logger.info(f"trimmed reads: {trim_filt_reads}")
@@ -283,7 +291,7 @@ def esviritu():
     fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
     filtered_reads = fastp_stats_fn(
         trim_filt_reads,
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         str(args.SAMPLE),
         bool(args.QUAL),
         bool(args.FILTER_SEQS),
@@ -299,7 +307,8 @@ def esviritu():
         db_index,
         trim_filt_reads,
         str(args.CPU),
-        init_bam_f
+        init_bam_f,
+        str(args.MMK)
     )
 
     logger.info(f"initial bam: {initial_map_bam}")
@@ -307,8 +316,7 @@ def esviritu():
     ## check if any reads aligned or quit
     if not esvf.bam_has_alignments(initial_map_bam):
         logger.error(
-            f"No reads aligned to the EsViritu DB in {initial_map_bam}",
-            f"Exiting..."
+            f"No reads aligned to the EsViritu DB in {initial_map_bam}. Exiting..."
         )
         if args.KEEP:
             logger.info(f"keeping temp files in {args.TEMP_DIR}")
@@ -381,7 +389,8 @@ def esviritu():
         clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
-        sec_bam_f
+        sec_bam_f,
+        str(args.MMK)
     )
 
     #########################
@@ -414,7 +423,7 @@ def esviritu():
         separator = "\t"
     )
 
-    ## make new fasta file database from aniclust exemplars, attempt 2
+    ## make new fasta file database from exemplars, attempt 2
     sec_clust_db_fasta = clust_record_getter_fn(
         sec_read_clust_of,
         2,
@@ -433,12 +442,13 @@ def esviritu():
         sec_clust_db_fasta,
         trim_filt_reads,
         str(args.CPU),
-        third_bam_f
+        third_bam_f,
+        str(args.MMK)
     )
 
     ## take third .bam, make final consensus .fastas
     sec_con_f = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}_final_consensus.fasta"
     )
     bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
@@ -473,7 +483,7 @@ def esviritu():
     )
 
     windows_of = os.path.join(
-        args.OUTPUT_DIR,
+        out_directory,
         f"{str(args.SAMPLE)}.virus_coverage_windows.tsv"
     )
 
@@ -507,7 +517,7 @@ def esviritu():
     )
 
     main_of = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}.detected_virus.info.tsv"
     )
     main_out_df.write_csv(
@@ -518,7 +528,7 @@ def esviritu():
     logger.info(f"summary table (per contig): {main_of}")
 
     assem_of = os.path.join(
-        str(args.OUTPUT_DIR),
+        str(out_directory),
         f"{str(args.SAMPLE)}.detected_virus.assembly_summary.tsv"
     )
     assem_out_df.write_csv(
@@ -527,30 +537,57 @@ def esviritu():
     )
     logger.info(f"summary table (per assembly): {assem_of}")
 
-    # make the html interactive table with sparklines
+    tax_fn = timed_function(logger=logger)(esvf.tax_profile)
+    tax_df = tax_fn(
+        assem_out_df,
+        float(args.spthresh),
+        float(args.subspthresh)
+    )
 
-    logger.info(f"generating reactable report...")
-    start_time = time.perf_counter()
-    reactableR_path = os.path.join(
-        os.path.dirname(__file__), 
-        'EsViritu_general_reactable1.R'
-        )
-    reactablecmd = [
-        'Rscript', reactableR_path,
-        windows_of,
-        main_of,
-        str(args.OUTPUT_DIR),
-        str(args.SAMPLE),
-        str(filtered_reads)
-        ]
-    try:
-        subprocess.run(reactablecmd, check=True)
-    except Exception as e:
-        logger.error(f"report generation failed: {reactablecmd}\nError: {e}")
-        raise
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    logger.info(f"reactable report finished in {elapsed_time:.2f} seconds")
+    tax_of = os.path.join(
+        str(out_directory),
+        f"{str(args.SAMPLE)}.tax_profile.tsv"
+    )
+    tax_df.write_csv(
+        file = tax_of,
+        separator = "\t"
+    )
+
+    # check if R script with libraries returns good exit code
+    completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
+
+    if completedProc.returncode == 0 :
+
+        # make the html interactive table with sparklines
+        logger.info(f"generating reactable report...")
+        start_time = time.perf_counter()
+        reactableR_path = os.path.join(
+            os.path.dirname(__file__), 
+            'EsViritu_general_reactable1.R'
+            )
+        reactablecmd = [
+            'Rscript', reactableR_path,
+            windows_of,
+            main_of,
+            str(out_directory),
+            str(args.SAMPLE),
+            str(filtered_reads)
+            ]
+        try:
+            subprocess.run(reactablecmd, check=True)
+        except Exception as e:
+            logger.error(f"report generation failed: {reactablecmd}\nError: {e}")
+            raise
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        logger.info(f"reactable report finished in {elapsed_time:.2f} seconds")
+
+    else:
+        logger.warning("some required R packages are not found. Required:")
+        logger.warning("reactable, htmltools, reactablefmtr, scales, magrittr")
+        logger.warning("HTML report not being created.")
+        logger.warning("Did you activate the conda environment?")
+        logger.warning("see EsViritu.yml.")
 
     # optionally removing temporary files
     if args.KEEP:

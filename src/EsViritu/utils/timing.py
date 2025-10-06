@@ -17,7 +17,7 @@ def timed_function(logger=None, level=logging.INFO):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Get the appropriate logger
-            log = logger or logging.getLogger()
+            log = logger or logging.getLogger("esv_logger")
             
             # Log start
             func_name = func.__name__

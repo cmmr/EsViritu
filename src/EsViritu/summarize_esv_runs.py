@@ -3,6 +3,7 @@ import os
 import glob
 import polars as pl
 import subprocess
+import yaml
 
 def summarize_esv_runs():
     """CLI entry point for the `summarize_esv_runs` console script."""
@@ -19,7 +20,8 @@ def summarize_esv_runs():
     file_patterns = [
         "*.detected_virus.info.tsv",
         "*.detected_virus.assembly_summary.tsv",
-        "*.virus_coverage_windows.tsv"
+        "*.virus_coverage_windows.tsv",
+        "*.tax_profile.tsv"
     ]
     
     output_files = {}
@@ -29,6 +31,25 @@ def summarize_esv_runs():
             print(f"No files found for pattern: {pattern}")
             continue
         print(f"Found {len(file_paths)} files for pattern: {pattern}")
+        if pattern == "*.tax_profile.tsv":
+            spthresh_list = []
+            subsp_thresh_list = []
+            yaml_paths = glob.glob(os.path.join(args.directory, "*_esviritu.params.yaml"))
+            for yaml_file_path in yaml_paths:
+                with open(yaml_file_path, 'r') as yaml_file:
+                    data = yaml.safe_load(yaml_file)
+                    spthresh_list.append(data["spthresh"])
+                    subsp_thresh_list.append(data["subspthresh"])
+
+            if len(set(spthresh_list)) > 1:
+                print("ERROR: disparate species-level thresholds detected in tax_profile tables, not combining.")
+                print(f"values detected {set(spthresh_list)}")
+                continue
+            if len(set(subsp_thresh_list)) > 1:
+                print("ERROR: disparate subspecies-level thresholds detected in tax_profile tables, not combining.")
+                print(f"values detected {set(subsp_thresh_list)}")
+                continue
+                
         dfs = []
         for fp in file_paths:
             try:
@@ -52,8 +73,13 @@ def summarize_esv_runs():
             print(f"Wrote merged file: {out_path}")
             output_files[pattern] = out_path
 
-    # If all three summary tables were made, run the R script
-    if all(p in output_files for p in file_patterns):
+    # If both required summary tables were made, run the R script
+
+    req_patterns = [
+        "*.detected_virus.info.tsv",
+        "*.virus_coverage_windows.tsv",
+    ]
+    if all(p in output_files for p in req_patterns):
         
         r_script = os.path.join(os.path.dirname(__file__), "EsViritu_project_reactable.R")
         coverage_tsv = output_files["*.virus_coverage_windows.tsv"]

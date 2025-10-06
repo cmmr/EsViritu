@@ -38,7 +38,7 @@ def is_tool(name):
     return shutil.which(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
-                filter_db: str = None, paired: str = "paired", threads: int = 4) -> list:
+                filter_db: str = None, paired: str = "paired", threads: int = 4, mmk: str = "500M") -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
     Args:
@@ -50,6 +50,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         filter_db: str, path to fasta file for minimap2 filtering (required if filter=True).
         paired: str, "paired" or "unpaired".
         threads: int, number of threads to use.
+        mmk: str, minimap2 -K parameter
     Returns:
         str: path to output fastq file with processed reads.
     """
@@ -81,14 +82,22 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
                 "-o", trimmed1, "-O", trimmed2,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
-            subprocess.run(fastp_cmd, check=True)
+            try:
+                subprocess.run(fastp_cmd, check=True)
+            except Exception as e:
+                logger.error(f"fastp paired trimming failed: {fastp_cmd}\nError: {e}")
+                raise
             input_fastq = [trimmed1, trimmed2]
         else:
             fastp_cmd = [
                 "fastp", "--in1", reads[0], "--out1", trimmed_fastq,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
-            subprocess.run(fastp_cmd, check=True)
+            try:
+                subprocess.run(fastp_cmd, check=True)
+            except Exception as e:
+                logger.error(f"fastp single-end trimming failed: {fastp_cmd}\nError: {e}")
+                raise
             input_fastq = [trimmed_fastq]
 
     # Step 2: Filter with minimap2 + pysam
@@ -99,11 +108,11 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if paired == "paired":
             read1, read2 = input_fastq
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", filter_db, read1, read2
+                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, read1, read2
             ]
         else:
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", filter_db, input_fastq[0]
+                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, input_fastq[0]
             ]
         samtools_view_cmd = ["samtools", "view", "-bS", "-"]
         samtools_sort_cmd = ["samtools", "sort", "-"]
@@ -183,19 +192,24 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
             data = json.load(f)
             total_reads = data["summary"]["before_filtering"]["total_reads"]
     except Exception as e:
-        logging.warning(f"Could not parse total_reads from fastp JSON: {e}")
+        logger.warning(f"Could not parse total_reads from fastp JSON: {e}")
     return total_reads
 
 
 
-def minimap2_f(reference: str, 
-                   reads: list, 
-                   cpus: str,
-                   sorted_outbf) -> str:
+def minimap2_f(reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M") -> str:
 
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
-    then filter low quality alignments
+    then filter low quality alignments.
+    Args:
+        reference: reference genome index.
+        reads: list of fastq read file(s)
+        cpus: number of CPUs to use for minimap2
+        sorted_outbf: sorted bam file name
+        mmk: -K parameter for minimap2
+    Returns:
+        sorted_outbf
     '''
     
     mini2_command = [
@@ -207,6 +221,7 @@ def minimap2_f(reference: str,
         '-f', '10000',
         '-N' '100',
         '-p', '0.90',
+        '-K', mmk,
         reference, 
         *reads
         ]
@@ -275,7 +290,7 @@ def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool =
         
         # Get all reads for this contig
         reads = list(bamfile.fetch(contig))
-        # only conunting primary alignments
+        # only counting primary alignments
         primary_reads = [r for r in reads if not r.is_secondary and not r.is_unmapped]
 
         if not primary_reads:
@@ -856,8 +871,67 @@ def bam_to_paired_fastq(bam_path, fastq_path) -> list:
         "-o", fastq_path,
         bam_path
     ]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except Exception as e:
+        logger.error(f"samtools fastq failed: {cmd}\nError: {e}")
+        raise
     return [fastq_path]
+
+## make subspecies tax profile
+def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: float = 0.95) -> pl.DataFrame:
+    """
+    Create taxonomic profile with cutoffs at both subspecies and species levels from assembly dataframe.
+    Records with avg_read_identity % < sp_cutoff are labeled as "unclassified" 
+    at the subspecies level.
+    Records with avg_read_identity % < subsp_cutoff are labeled as "unclassified" 
+    at the species level.
+
+    Args:
+        assem_df: pl.DataFrame, Assembly dataframe from assembly_table_maker (second return value)
+        sp_cutoff: float, average read ANI cutoff for species-level classification (default 90.0)
+        subsp_cutoff: float, average read ANI cutoff for subspecies-level classification (default 95.0)
+        
+    Returns:
+        pl.DataFrame: tax_df DataFrame
+    """
+
+    # Create taxonomical classification based on read identity threshold
+    adjust_df = assem_df.with_columns(
+        pl.when(pl.col("avg_read_identity") < sp_cutoff)
+        .then(
+            pl.lit("s__unclassified ") + 
+            pl.col("genus").str.replace("^g__", "").str.replace("^unclassified ", "")
+        )
+        .otherwise(pl.col("species"))
+        .alias("species"),
+        pl.when(pl.col("avg_read_identity") < subsp_cutoff)
+        .then(
+            pl.lit("t__unclassified ") + 
+            pl.col("species").str.replace("^s__", "").str.replace("^unclassified ", "")
+        )
+        .otherwise(pl.col("subspecies"))
+        .alias("subspecies")
+    )
+    
+    # Group by taxonomic levels including the new subspecies classification
+    tax_df = adjust_df.group_by([
+        "sample_ID", "filtered_reads_in_sample", "kingdom", "phylum", 
+        "tclass", "order", "family", "genus", "species", "subspecies"
+    ]).agg([
+        pl.col("read_count").sum().alias("read_count"),
+        pl.col("RPKMF").sum().alias("RPKMF"),
+        pl.col("avg_read_identity").mean().alias("avg_read_identity"),
+        pl.col("Assembly").unique().alias("assembly_list")
+    ]).sort([
+        "family", "genus", "species", "subspecies"
+    ]).with_columns(
+        pl.col("assembly_list").list.eval(pl.element().cast(pl.String))
+    ).with_columns(
+        pl.col("assembly_list").list.join(",")
+    )
+    
+    return tax_df
 
 
 def print_esviritu_banner():
