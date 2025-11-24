@@ -102,6 +102,8 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
                 logger.error(f"fastp single-end trimming failed: {fastp_cmd}\nError: {e}")
                 raise
             input_fastq = [trimmed_fastq]
+    else:
+        logger.info("Not filtering for quality...")
 
     # Step 2: Filter with minimap2 + pysam
     if filter:
@@ -169,6 +171,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
             output_fastq = [unmapped_fastq1, unmapped_fastq2]
         return output_fastq
     else:
+        logger.info("Not filtering against host/spike-in reference...")
         return input_fastq
 
 ## fastp stats

@@ -285,7 +285,7 @@ def esviritu():
         str(args.MMK)
     )
 
-    logger.info(f"trimmed reads: {trim_filt_reads}")
+    logger.info(f"Main input reads: {trim_filt_reads}")
 
     # get read stats for mapping pipeline
     fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
