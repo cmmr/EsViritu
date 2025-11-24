@@ -48,7 +48,7 @@ Code: **v1.1.1**
 Database: **v3.2.2**
 
 
-### Stable release via Bionconda (recommended)
+### Stable release via Bioconda (recommended)
 
 *NOTE: 2025-08-18 EsViritu v1.1.0 released and available on bioconda.*
 
