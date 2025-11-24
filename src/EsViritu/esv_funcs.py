@@ -248,7 +248,7 @@ def various_readstats(
     """
     pre_qual_json = os.path.join(tempdir, f"{sample_name}.fastp.json")
     pre_filt_json = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.json")
-    yaml_readcount_path = os.path.join(outdir, f"{args.SAMPLE}_esviritu.readstats.yaml")
+    yaml_readcount_path = os.path.join(outdir, f"{sample_name}_esviritu.readstats.yaml")
 
     readstats_dict = {}
     if trimarg and os.path.isfile(pre_qual_json):
