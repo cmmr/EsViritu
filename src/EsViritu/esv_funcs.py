@@ -900,15 +900,15 @@ def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: f
     adjust_df = assem_df.with_columns(
         pl.when(pl.col("avg_read_identity") < sp_cutoff)
         .then(
-            pl.lit("s__unclassified ") + 
-            pl.col("genus").str.replace("^g__", "").str.replace("^unclassified ", "")
+            pl.lit("s__unclassified_") + 
+            pl.col("genus").str.replace("^g__", "").str.replace("^unclassified_", "")
         )
         .otherwise(pl.col("species"))
         .alias("species"),
         pl.when(pl.col("avg_read_identity") < subsp_cutoff)
         .then(
-            pl.lit("t__unclassified ") + 
-            pl.col("species").str.replace("^s__", "").str.replace("^unclassified ", "")
+            pl.lit("t__unclassified_") + 
+            pl.col("species").str.replace("^s__", "").str.replace("^unclassified_", "")
         )
         .otherwise(pl.col("subspecies"))
         .alias("subspecies")
