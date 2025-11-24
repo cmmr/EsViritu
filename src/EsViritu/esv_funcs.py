@@ -119,9 +119,9 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if paired == "paired":
             unmapped_fastq1 = filtered_fastq.replace(".fastq", "_R1.fastq")
             unmapped_fastq2 = filtered_fastq.replace(".fastq", "_R2.fastq")
-            samtools_fastq_cmd = ["samtools", "fastq", "-f", "4", "-1", unmapped_fastq1, "-2", unmapped_fastq2, "-"]
+            samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-1", unmapped_fastq1, "-2", unmapped_fastq2, "-"]
         else:
-            samtools_fastq_cmd = ["samtools", "fastq", "-f", "4", "-o", filtered_fastq, "-"]
+            samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-o", filtered_fastq, "-"]
 
         # Pipe together: minimap2 | samtools view | samtools sort | samtools fastq
         p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE)
