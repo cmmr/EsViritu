@@ -222,10 +222,15 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
     
     ## get total reads from fastp json
     total_reads = None
+    if trimarg and os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json")) and not filtarg:
+        which_reads = "after_filtering"
+    else:
+        which_reads = "before_filtering"
+        
     try:
         with open(pipeline_stats_fastp_json, "r") as f:
             data = json.load(f)
-            total_reads = data["summary"]["before_filtering"]["total_reads"]
+            total_reads = data["summary"][which_reads]["total_reads"]
     except Exception as e:
         logger.warning(f"Could not parse total_reads from fastp JSON: {e}")
     return total_reads
@@ -988,7 +993,8 @@ def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: f
             pl.col("genus").str.replace("^g__", "").str.replace("^unclassified_", "")
         )
         .otherwise(pl.col("species"))
-        .alias("species"),
+        .alias("species")
+    ).with_columns(
         pl.when(pl.col("avg_read_identity") < subsp_cutoff)
         .then(
             pl.lit("t__unclassified_") + 
