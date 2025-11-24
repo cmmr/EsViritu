@@ -1,3 +1,4 @@
+from ntpath import isfile
 import polars as pl
 import pysam
 import logging
@@ -14,6 +15,8 @@ import statistics
 from typing import Dict, Tuple
 from collections import defaultdict, Counter
 import shutil
+
+import yaml
 
 logger = logging.getLogger("esv_logger")
 
@@ -105,6 +108,34 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if filter_db is None:
             raise ValueError("filter_db must be provided if filter=True")
         # Build commands for piping
+
+        if not os.path.isfile(fastp_json):
+            pre_filt_fastp_html = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.html")
+            pre_filt_fastp_json = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.json")
+            if paired == "paired":
+                read1, read2 = input_fastq
+                fastp_stat_paired_cmd = [
+                    "fastp", "-i", read1, "-I", read2,
+                    "-w", str(fastp_threads), "--html", pre_filt_fastp_html, 
+                    "--json", pre_filt_fastp_json
+                ]
+                try:
+                    subprocess.run(fastp_stat_paired_cmd, check=True)
+                except Exception as e:
+                    logger.error(f"fastp_stat_paired_cmd failed: {fastp_stat_paired_cmd}\nError: {e}")
+                    raise
+            else:
+                fastp_stat_single_cmd = [
+                    "fastp", "-i", input_fastq[0],
+                    "-w", str(fastp_threads), "--html", pre_filt_fastp_html, 
+                    "--json", pre_filt_fastp_json
+                ]
+                try:
+                    subprocess.run(fastp_stat_single_cmd, check=True)
+                except Exception as e:
+                    logger.error(f"fastp_stat_single_cmd failed: {fastp_stat_single_cmd}\nError: {e}")
+                    raise
+
         if paired == "paired":
             read1, read2 = input_fastq
             minimap2_cmd = [
@@ -119,6 +150,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if paired == "paired":
             unmapped_fastq1 = filtered_fastq.replace(".fastq", "_R1.fastq")
             unmapped_fastq2 = filtered_fastq.replace(".fastq", "_R2.fastq")
+            # the 12 flag is like 4 + 8 (keep if unmapped and pair is unmapped)
             samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-1", unmapped_fastq1, "-2", unmapped_fastq2, "-"]
         else:
             samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-o", filtered_fastq, "-"]
@@ -195,6 +227,55 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
         logger.warning(f"Could not parse total_reads from fastp JSON: {e}")
     return total_reads
 
+def various_readstats(
+    outdir: str, sample_name: str, trimarg: bool, 
+    filtarg: bool,tempdir: str, filtered_reads: str
+    ) -> str:
+    """
+    compile the stats from the various read filtering stages and return a yaml file.
+    Args:
+        reads: str, path to input fastq file(s). If paired, should be space-separated paths.
+        outdir: str, output directory for summary files.
+        tempdir: str, directory for intermediate files.
+        trimarg: bool, whether to perform quality trimming with fastp.
+        filtarg: bool, whether to filter reads mapping to filter_db with minimap2.
+        filtered_reads: str, filtered read count from fastp_stats, used as the EsViritu denominator
+    Returns:
+        str: path to output yaml file with read stats.
+    """
+    pre_qual_json = os.path.join(tempdir, f"{sample_name}.fastp.json")
+    pre_filt_json = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.json")
+    yaml_readcount_path = os.path.join(outdir, f"{args.SAMPLE}_esviritu.readstats.yaml")
+
+    readstats_dict = {}
+    if trimarg and os.path.isfile(pre_qual_json):
+        try:
+            with open(pre_qual_json, "r") as f:
+                data = json.load(f)
+                total_reads = data["summary"]["before_filtering"]["total_reads"]
+            readstats_dict["reads pre-quality filter"] = total_reads
+        except Exception as e:
+            logger.warning(f"Could not parse pre-qual reads from fastp JSON: {e}")
+    if filtarg and os.path.isfile(pre_filt_json):
+        try:
+            with open(pre_filt_json, "r") as f:
+                data = json.load(f)
+                total_reads = data["summary"]["before_filtering"]["total_reads"]
+            readstats_dict["reads pre-host removal"] = total_reads
+        except Exception as e:
+            logger.warning(f"Could not parse pre-host filter reads from fastp JSON: {e}")
+    try:
+        readstats_dict["reads for EsViritu denominator"] = filtered_reads
+    except Exception as e:
+        logger.warning(f"Could not parse filtered_reads from variable: {e}")
+
+    try:
+        with open(yaml_readcount_path, 'w') as yaml_file:
+            yaml.dump(readstats_dict, yaml_file, default_flow_style=False)
+    except Exception as e:
+        logger.error(f"Failed to save readstats parameters YAML: {e}")
+
+    return yaml_readcount_path
 
 
 def minimap2_f(reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M") -> str:
