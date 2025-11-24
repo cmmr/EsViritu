@@ -300,6 +300,18 @@ def esviritu():
         str(args.CPU)
     )
 
+    # make a .yaml file with various readstats for later use
+    out_readstats_yaml = esvf.various_readstats(
+        str(out_directory),
+        str(args.SAMPLE),
+        bool(args.QUAL),
+        bool(args.FILTER_SEQS),
+        str(args.TEMP_DIR),
+        filtered_reads
+    )
+
+    logger.info(f"read stats file: {out_readstats_yaml}")
+
     # map reads to virus DB and filter for good alignments
     init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")
     minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
