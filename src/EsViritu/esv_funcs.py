@@ -272,6 +272,15 @@ def various_readstats(
             readstats_dict["reads pre-host removal"] = total_reads
         except Exception as e:
             logger.warning(f"Could not parse pre-host filter reads from fastp JSON: {e}")
+    elif filtarg and trimarg and os.path.isfile(pre_qual_json):
+        try:
+            with open(pre_qual_json, "r") as f:
+                data = json.load(f)
+                ## this is gets the post-quality filter reads when this step is run
+                total_reads = data["summary"]["after_filtering"]["total_reads"]
+            readstats_dict["reads pre-host removal"] = total_reads
+        except Exception as e:
+            logger.warning(f"Could not parse pre-qual reads from fastp JSON: {e}")
     try:
         readstats_dict["reads for EsViritu denominator"] = filtered_reads
     except Exception as e:
