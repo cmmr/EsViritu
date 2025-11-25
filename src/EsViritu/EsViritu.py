@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.1.1'
+    __version__='1.1.2'
 
     esv_start_time = time.perf_counter()
 
@@ -285,7 +285,7 @@ def esviritu():
         str(args.MMK)
     )
 
-    logger.info(f"trimmed reads: {trim_filt_reads}")
+    logger.info(f"Main input reads: {trim_filt_reads}")
 
     # get read stats for mapping pipeline
     fastp_stats_fn = timed_function(logger=logger)(esvf.fastp_stats)
@@ -299,6 +299,18 @@ def esviritu():
         str(args.READ_FMT),
         str(args.CPU)
     )
+
+    # make a .yaml file with various readstats for later use
+    out_readstats_yaml = esvf.various_readstats(
+        str(out_directory),
+        str(args.SAMPLE),
+        bool(args.QUAL),
+        bool(args.FILTER_SEQS),
+        str(args.TEMP_DIR),
+        filtered_reads
+    )
+
+    logger.info(f"read stats file: {out_readstats_yaml}")
 
     # map reads to virus DB and filter for good alignments
     init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")

@@ -4,12 +4,12 @@
 
 Code: **v1.1.1**
 
-Database: **v3.2.2**
+Database: **v3.2.4**
 
 
 ### Stable release via Bionconda (recommended)
 
-*NOTE: 2025-08-18 EsViritu v1.1.0 released and available on bioconda.*
+*NOTE: 2025-10-07 EsViritu v1.1.1 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -25,33 +25,34 @@ Database: **v3.2.2**
 
 **3)  Download the database (\~400 MB when decompressed). EsViritu v1.0.0 or higher requires DB v3.1.0 or higher!**
 
-[![Database DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16898905.svg)](https://doi.org/10.5281/zenodo.16898905)
+[![Database DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17716199.svg)](https://doi.org/10.5281/zenodo.17716199)
+
 
 `cd` *where you want the database to reside*
 
 `mkdir esviritu_DB && cd esviritu_DB`
 
-Download the tarball of DB `v3.2.2` (most recent version) from Zenodo:
+Download the tarball of DB `v3.2.4` (most recent version) from Zenodo:
 
-`wget https://zenodo.org/records/16898905/files/esviritu_db_v3.2.2.tar.gz`
+`wget https://zenodo.org/records/17716199/files/esviritu_db_v3.2.4.tar.gz`
 
 Check that the download was successful:
 
-`md5sum esviritu_db_v3.2.2.tar.gz`
+`md5sum esviritu_db_v3.2.4.tar.gz`
 
-should return `fb6850259b82d39dab104f4b9145f04d  esviritu_db_v3.2.2.tar.gz`
+should return `24d85c1ec3cbffff12e921d2f39c91b2  esviritu_db_v3.2.4.tar.gz`
 
 Unpack and remove the tarball:
 
-`tar -xvf esviritu_db_v3.2.2.tar.gz`
+`tar -xvf esviritu_db_v3.2.4.tar.gz`
 
-`rm esviritu_db_v3.2.2.tar.gz`
+`rm esviritu_db_v3.2.4.tar.gz`
 
-DB files should be in `v3.2.2/`
+DB files should be in `v3.2.4/`
 
 **4)  Set the database path (optional but recommended):**
 
-`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.2`
+`conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.4`
 
 **5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
 

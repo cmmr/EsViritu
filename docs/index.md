@@ -9,7 +9,7 @@ EsViritu is a read mapping pipeline for detection and measurement of human and a
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus reads with 80% ANI or greater to reference genomes.
 
 !!! note
-    The database used by `Esviritu` should cover all human and animal viruses in GenBank as of August 2025 (EsViritu DB v3.2.2). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
+    The database used by `Esviritu` should cover all human and animal viruses in GenBank as of October 2025 (EsViritu DB v3.2.4). However, the genomes are dereplicated at 95% ANI so that only one genome from a nearly identical group is used. Please open an issue to report any omissions.
 
 ## Getting started
 
