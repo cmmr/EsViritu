@@ -55,6 +55,49 @@ combined_data$subspecies <- sub("^t__", "", combined_data$subspecies)
 
 magma_colors <- c("#F6E620", "#F98E09", "#E14E0E", "#8B0A50", "#000004")
 
+safe_google_font <- function(tbl, font_family = "Oswald") {
+  font_url <- sprintf(
+    "https://fonts.googleapis.com/css2?family=%s&display=swap",
+    utils::URLencode(font_family, reserved = TRUE)
+  )
+
+  can_fetch <- FALSE
+  if (requireNamespace("curl", quietly = TRUE)) {
+    can_fetch <- tryCatch({
+      handle <- curl::new_handle(nobody = TRUE, connecttimeout = 2, timeout = 5)
+      res <- curl::curl_fetch_memory(font_url, handle = handle)
+      res$status_code >= 200 && res$status_code < 400
+    }, error = function(e) FALSE)
+  }
+
+  if (!can_fetch) {
+    warning(
+      sprintf(
+        "Skipping google_font('%s') because %s is unreachable.",
+        font_family,
+        font_url
+      ),
+      call. = FALSE
+    )
+    return(tbl)
+  }
+
+  tryCatch(
+    google_font(tbl, font_family = font_family),
+    error = function(e) {
+      warning(
+        sprintf(
+          "Failed to apply google_font('%s'): %s. Continuing without custom font.",
+          font_family,
+          conditionMessage(e)
+        ),
+        call. = FALSE
+      )
+      tbl
+    }
+  )
+}
+
 ## check for dataui
 is_dataui <- require(dataui)
 
@@ -121,7 +164,7 @@ if (is_dataui == TRUE) {
         format(Sys.time(), "%Y-%m-%d %H:%M")
       )
     ) %>%
-    google_font(font_family = "Oswald")
+    safe_google_font(font_family = "Oswald")
   
 } else {
   keep_nodataui <- c(
@@ -171,7 +214,7 @@ if (is_dataui == TRUE) {
         format(Sys.time(), "%Y-%m-%d %H:%M")
       )
     ) %>%
-    google_font(font_family = "Oswald")
+    safe_google_font(font_family = "Oswald")
   
 }
 
