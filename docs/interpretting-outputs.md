@@ -17,7 +17,7 @@ Sometimes, reads align to a reference with low read ANI, e.g. 88% ANI. This sugg
 
 !!! Tip
     Users can set reasonable thresholds in downstream analysis, especially when having to analyze many samples.
-    Here are some reasonable but non-definitive suggestions:
+    Here are some reasonable but non-definitive suggestions (which are the default thresholds in `.tax_profile.tsv` files):
 
     - 95% ANI required to quantify aligned reads at subspecies level
 

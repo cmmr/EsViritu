@@ -37,20 +37,20 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 19,925 high quality virus genome assemblies across 63 taxonomic families:
 
-![heattree](docs/schematic/Esviritu_DB_heat_tree_v3.2.4.crop.png)
+![heattree](docs/schematic/Esviritu_DB_heat_tree_v3.2.4.cropped.png)
 
 ## Installation
 
 ### Current Versions
 
-Code: **v1.1.1**
+Code: **v1.1.2**
 
 Database: **v3.2.4**
 
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2025-10-07 EsViritu v1.1.1 released and available on bioconda.*
+*NOTE: 2025-11-25 EsViritu v1.1.2 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 

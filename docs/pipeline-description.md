@@ -12,7 +12,7 @@
 
 5)  breadth, depth, abundance, average read identity, and nucleotide diversity (Pi) is determined for each detected genome/segment.
 
-6)  Summary tables are generated for the contig level `*.detected_virus.info.tsv` and the assembly level `*.detected_virus.assembly_summary.tsv`
+6)  Summary tables are generated for the contig level `*.detected_virus.info.tsv` and the assembly level `*.detected_virus.assembly_summary.tsv`. A taxonomic profile table is generated `*.tax_profile.tsv`.
 
 7)  Consensus sequences are determined for each detected dereplicated genome/segment. `*_final_consensus.fasta`
 
