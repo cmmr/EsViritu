@@ -15,7 +15,7 @@ As of EsViritu `v1.0.0` (and later):
 
 2) Single read sensitivity for detection (requires reads >= 100 nt).
 
-3) Assembly-aware genome reconstructions for segmented viruses.
+3) Assembly-aware genome reconstructions for segmented and non-segmented viruses.
 
 4) Expression of uncertainty (i.e. average read identity to reference, nucleotide diversity measurement).
 
