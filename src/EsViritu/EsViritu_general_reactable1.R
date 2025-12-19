@@ -24,14 +24,16 @@ coverage_data <- read.table(
   sep = "\t",
   header = TRUE,
   stringsAsFactors = FALSE,
-  quote = ""
+  quote = "",
+  comment.char = ""
 )
 genome_data <- read.table(
   args[2],
   sep = "\t",
   header = TRUE,
   stringsAsFactors = FALSE,
-  quote = ""
+  quote = "",
+  comment.char = ""
 )
 coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
 sum_coverage <- aggregate(
