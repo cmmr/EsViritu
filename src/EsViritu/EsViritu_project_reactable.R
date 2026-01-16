@@ -23,7 +23,8 @@ coverage_data <- read.table(
   header = TRUE,
   stringsAsFactors = FALSE,
   fill = TRUE,
-  quote = ""
+  quote = "",
+  comment.char = ""
 )
 genome_data <- read.table(
   args[2],
@@ -31,7 +32,8 @@ genome_data <- read.table(
   header = TRUE,
   stringsAsFactors = FALSE,
   fill = TRUE,
-  quote = ""
+  quote = "",
+  comment.char = ""
 )
 coverage_data$average_coverage <- ceiling(coverage_data$average_coverage)
 sum_coverage <- aggregate(

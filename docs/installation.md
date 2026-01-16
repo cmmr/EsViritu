@@ -2,7 +2,7 @@
 
 ### Current Versions
 
-Code: **v1.1.2**
+Code: **v1.1.3**
 
 Database: **v3.2.4**
 
