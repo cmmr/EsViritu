@@ -16,8 +16,8 @@ def summarize_esv_runs():
         help="Directory containing EsViritu .tsv outputs",
     )
     args = parser.parse_args()
-    # Define file types to search for
-    file_patterns = [
+    # Define tsv file patterns to search for
+    tsv_patterns = [
         "*.detected_virus.info.tsv",
         "*.detected_virus.assembly_summary.tsv",
         "*.virus_coverage_windows.tsv",
@@ -25,7 +25,7 @@ def summarize_esv_runs():
     ]
     
     output_files = {}
-    for pattern in file_patterns:
+    for pattern in tsv_patterns:
         file_paths = glob.glob(os.path.join(args.directory, pattern))
         if not file_paths:
             print(f"No files found for pattern: {pattern}")
@@ -73,6 +73,33 @@ def summarize_esv_runs():
             print(f"Wrote merged file: {out_path}")
             output_files[pattern] = out_path
 
+    # make input read summary from readstats.yaml
+    read_dfs = []
+    pattern = "*_esviritu.readstats.yaml"
+    file_paths = glob.glob(os.path.join(args.directory, pattern))
+    if not file_paths:
+        print(f"No files found for pattern: {pattern}")
+    else:
+        print(f"Found {len(file_paths)} files for pattern: {pattern}")
+        for yaml_file_path in file_paths:
+            base = os.path.basename(yaml_file_path)
+            sample_name = base.removesuffix("_esviritu.readstats.yaml")
+            with open(yaml_file_path, 'r') as yaml_file:
+                data = yaml.safe_load(yaml_file)
+                data["sample_ID"] = sample_name
+
+                read_df = pl.DataFrame(data)
+
+                read_dfs.append(read_df)
+    if read_dfs:
+        merged_read_df = pl.concat(read_dfs, how="diagonal_relaxed")
+        merged_read_df = merged_read_df.select(["sample_ID", pl.all().exclude("sample_ID")])
+        dir_basename = os.path.basename(os.path.abspath(args.directory))
+        out_name = f"{dir_basename}.readstats.tsv"
+        out_path = os.path.join(os.getcwd(), out_name)
+        merged_read_df.write_csv(out_path, separator="\t")
+        print(f"Wrote merged file: {out_path}")
+        output_files[pattern] = out_path
     # If both required summary tables were made, run the R script
 
     req_patterns = [
