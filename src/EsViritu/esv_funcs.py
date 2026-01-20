@@ -41,7 +41,8 @@ def is_tool(name):
     return shutil.which(name) is not None
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
-                filter_db: str = None, paired: str = "paired", threads: int = 4, mmk: str = "500M") -> list:
+                filter_db: str = None, paired: str = "paired", threads: int = 4, mmk: str = "500M",
+                dedup: bool = False) -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
     Args:
@@ -54,6 +55,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         paired: str, "paired" or "unpaired".
         threads: int, number of threads to use.
         mmk: str, minimap2 -K parameter
+        dedup: bool, whether to remove PCR duplicates with fastp --dedup.
     Returns:
         str: path to output fastq file with processed reads.
     """
@@ -85,6 +87,8 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
                 "-o", trimmed1, "-O", trimmed2,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
+            if dedup:
+                fastp_cmd.append("--dedup")
             try:
                 subprocess.run(fastp_cmd, check=True)
             except Exception as e:
@@ -96,6 +100,8 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
                 "fastp", "--in1", reads[0], "--out1", trimmed_fastq,
                 "-w", str(fastp_threads), "--html", fastp_html, "--json", fastp_json
             ]
+            if dedup:
+                fastp_cmd.append("--dedup")
             try:
                 subprocess.run(fastp_cmd, check=True)
             except Exception as e:

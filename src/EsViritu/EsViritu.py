@@ -125,10 +125,16 @@ def esviritu():
             There is no perfect metric for this."
         )
     optional_args.add_argument(
-        "--subspecies-threshold", 
-        dest="subspthresh", type=float, default=0.95, 
+        "--subspecies-threshold",
+        dest="subspthresh", type=float, default=0.95,
         help=f"Default: 0.95 -- minimum ANI of reads to reference to classify record at subspecies level.\
             There is no perfect metric for this."
+        )
+    optional_args.add_argument(
+        "--dedup",
+        dest="DEDUP", type=esvf.str2bool, default=False,
+        help='True or False. Remove PCR duplicates during fastp preprocessing? \
+            This can reduce processing time and provide more accurate abundance estimates.'
         )
     args = parser.parse_args()
 
@@ -282,7 +288,8 @@ def esviritu():
         str(filter_db_fasta),
         str(args.READ_FMT),
         str(args.CPU),
-        str(args.MMK)
+        str(args.MMK),
+        bool(args.DEDUP)
     )
 
     logger.info(f"Main input reads: {trim_filt_reads}")
