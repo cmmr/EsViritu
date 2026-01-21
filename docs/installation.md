@@ -2,14 +2,14 @@
 
 ### Current Versions
 
-Code: **v1.1.3**
+Code: **v1.1.4**
 
 Database: **v3.2.4**
 
 
 ### Stable release via Bionconda (recommended)
 
-*NOTE: 2025-11-25 EsViritu v1.1.2 released and available on bioconda.*
+*NOTE: 2026-01-20 EsViritu v1.1.4 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
