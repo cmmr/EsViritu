@@ -8,12 +8,13 @@ suppressMessages(suppressWarnings(library(magrittr)))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) != 3) {
+if (length(args) != 4) {
   stop(
     "Three arguments must be supplied:
     coverage windows tsv, 
     main table tsv, 
-    project_ID",
+    project_ID,
+    outdir",
     call. = FALSE
   )
 }
@@ -221,5 +222,9 @@ if (is_dataui == TRUE) {
 }
 
 nice_table %>% save_reactable_test(
-  sprintf("%s_EsViritu_project_reactable.html", args[3])
+  sprintf(
+    "%s/%s_EsViritu_project_reactable.html", 
+    args[4],
+    args[3]
+    )
 )

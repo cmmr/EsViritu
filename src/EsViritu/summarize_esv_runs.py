@@ -125,7 +125,8 @@ def summarize_esv_runs():
             "Rscript", r_script,
             coverage_tsv,
             main_tsv,
-            os.path.basename(os.path.abspath(args.directory))
+            os.path.basename(os.path.abspath(args.directory)),
+            outdir
         ]
         try:
             print(f"Generating report: {' '.join(cmd)}")
