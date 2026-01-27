@@ -15,7 +15,16 @@ def summarize_esv_runs():
         type=str,
         help="Directory containing EsViritu .tsv outputs",
     )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        default=None,
+        help="Directory to save output files (default: current working directory)",
+    )
     args = parser.parse_args()
+    
+    outdir = args.outdir if args.outdir else os.getcwd()
+    os.makedirs(outdir, exist_ok=True)
     # Define tsv file patterns to search for
     tsv_patterns = [
         "*.detected_virus.info.tsv",
@@ -68,7 +77,7 @@ def summarize_esv_runs():
             merged = pl.concat(dfs, how="vertical_relaxed")
             dir_basename = os.path.basename(os.path.abspath(args.directory))
             out_name = f"{dir_basename}.{pattern.replace('*.', '')}"
-            out_path = os.path.join(os.getcwd(), out_name)
+            out_path = os.path.join(outdir, out_name)
             merged.write_csv(out_path, separator="\t")
             print(f"Wrote merged file: {out_path}")
             output_files[pattern] = out_path
@@ -96,7 +105,7 @@ def summarize_esv_runs():
         merged_read_df = merged_read_df.select(["sample_ID", pl.all().exclude("sample_ID")])
         dir_basename = os.path.basename(os.path.abspath(args.directory))
         out_name = f"{dir_basename}.readstats.tsv"
-        out_path = os.path.join(os.getcwd(), out_name)
+        out_path = os.path.join(outdir, out_name)
         merged_read_df.write_csv(out_path, separator="\t")
         print(f"Wrote merged file: {out_path}")
         output_files[pattern] = out_path
@@ -116,7 +125,8 @@ def summarize_esv_runs():
             "Rscript", r_script,
             coverage_tsv,
             main_tsv,
-            os.path.basename(os.path.abspath(args.directory))
+            os.path.basename(os.path.abspath(args.directory)),
+            outdir
         ]
         try:
             print(f"Generating report: {' '.join(cmd)}")
