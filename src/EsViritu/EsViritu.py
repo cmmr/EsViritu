@@ -99,7 +99,7 @@ def esviritu():
             (R1, then R2) after -r argument.'
         )
     optional_args.add_argument(
-        "-mmP" "--mm_preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
+        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
         default='sr',
         help=f'Default = sr -- minimap2 alignment preset. \
             sr: short read data (Illumina, other high-accuracy short reads). \
@@ -302,6 +302,7 @@ def esviritu():
         str(args.READ_FMT),
         str(args.CPU),
         str(args.MMK),
+        str(args.MM_SET),
         bool(args.DEDUP)
     )
 
@@ -340,7 +341,8 @@ def esviritu():
         trim_filt_reads,
         str(args.CPU),
         init_bam_f,
-        str(args.MMK)
+        str(args.MMK),
+        str(args.MM_SET)
     )
 
     logger.info(f"initial bam: {initial_map_bam}")
