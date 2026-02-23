@@ -176,6 +176,8 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
 
         if paired == "paired":
             output_fastq = [unmapped_fastq1, unmapped_fastq2]
+        else: 
+            output_fastq = [filtered_fastq]
         return output_fastq
     else:
         logger.info("Not filtering against host/spike-in reference...")
@@ -193,16 +195,25 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
     else:
         fastp_threads = int(threads)
 
-    if trimarg and os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json")) and not filtarg:
-        shutil.copy(
-            os.path.join(tempdir, f"{sample_name}.fastp.json"),
-            pipeline_stats_fastp_json
-        )
-        if os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.html")):
-            shutil.copy(
-                os.path.join(tempdir, f"{sample_name}.fastp.html"),
-                pipeline_stats_fastp_html
-            )
+    # Determine which existing fastp JSON to reuse, if any:
+    # - trim=True, filter=False: reuse fastp.json from quality trimming
+    # - trim=False, filter=True: reuse pre_filt.fastp.json from host filtering step
+    # - Otherwise: run fastp on final reads to count them
+    trim_json = os.path.join(tempdir, f"{sample_name}.fastp.json")
+    pre_filt_json = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.json")
+    trim_html = os.path.join(tempdir, f"{sample_name}.fastp.html")
+    pre_filt_html = os.path.join(tempdir, f"{sample_name}.pre_filt.fastp.html")
+    
+    if trimarg and not filtarg and os.path.isfile(trim_json):
+        # Reuse stats from quality trimming step
+        shutil.copy(trim_json, pipeline_stats_fastp_json)
+        if os.path.isfile(trim_html):
+            shutil.copy(trim_html, pipeline_stats_fastp_html)
+    elif filtarg and not trimarg and os.path.isfile(pre_filt_json):
+        # Reuse stats from pre-filter step (avoids redundant fastp call)
+        shutil.copy(pre_filt_json, pipeline_stats_fastp_json)
+        if os.path.isfile(pre_filt_html):
+            shutil.copy(pre_filt_html, pipeline_stats_fastp_html)
     elif paired == "paired":
         read1, read2 = reads
         fastp_stat_paired_cmd = [
@@ -228,11 +239,18 @@ def fastp_stats(reads: list, outdir: str, sample_name: str, trimarg: bool, filta
             raise
     
     ## get total reads from fastp json
+    # The pipeline_stats_fastp_json now contains stats for the final preprocessed reads.
+    # - If we copied from trim fastp.json (trim=True, filter=False), use "after_filtering" 
+    #   to get post-quality-filter count.
+    # - Otherwise, we ran fastp on already-processed reads just to count them, 
+    #   so use "before_filtering" (no filtering was applied in this counting run).
     total_reads = None
-    if trimarg and os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json")) and not filtarg:
-        which_reads = "after_filtering"
-    else:
-        which_reads = "before_filtering"
+    copied_from_trim = (
+        trimarg and 
+        not filtarg and 
+        os.path.isfile(os.path.join(tempdir, f"{sample_name}.fastp.json"))
+    )
+    which_reads = "after_filtering" if copied_from_trim else "before_filtering"
         
     try:
         with open(pipeline_stats_fastp_json, "r") as f:
@@ -263,31 +281,36 @@ def various_readstats(
     yaml_readcount_path = os.path.join(outdir, f"{sample_name}_esviritu.readstats.yaml")
 
     readstats_dict = {}
+    
+    # Track reads at each filtering stage for full visibility into read attrition
+    
+    # 1. Pre-quality filter reads (only when trimming was performed)
     if trimarg and os.path.isfile(pre_qual_json):
         try:
             with open(pre_qual_json, "r") as f:
                 data = json.load(f)
-                total_reads = data["summary"]["before_filtering"]["total_reads"]
-            readstats_dict["reads pre-quality filter"] = total_reads
+                readstats_dict["reads pre-quality filter"] = data["summary"]["before_filtering"]["total_reads"]
         except Exception as e:
             logger.warning(f"Could not parse pre-qual reads from fastp JSON: {e}")
-    if filtarg and os.path.isfile(pre_filt_json):
-        try:
-            with open(pre_filt_json, "r") as f:
-                data = json.load(f)
-                total_reads = data["summary"]["before_filtering"]["total_reads"]
-            readstats_dict["reads pre-host removal"] = total_reads
-        except Exception as e:
-            logger.warning(f"Could not parse pre-host filter reads from fastp JSON: {e}")
-    elif filtarg and trimarg and os.path.isfile(pre_qual_json):
-        try:
-            with open(pre_qual_json, "r") as f:
-                data = json.load(f)
-                ## this is gets the post-quality filter reads when this step is run
-                total_reads = data["summary"]["after_filtering"]["total_reads"]
-            readstats_dict["reads pre-host removal"] = total_reads
-        except Exception as e:
-            logger.warning(f"Could not parse pre-qual reads from fastp JSON: {e}")
+    
+    # 2. Pre-host removal reads (when host filtering was performed)
+    if filtarg:
+        if os.path.isfile(pre_filt_json):
+            # trim=False, filter=True: pre_filt.fastp.json was created
+            try:
+                with open(pre_filt_json, "r") as f:
+                    data = json.load(f)
+                    readstats_dict["reads pre-host removal"] = data["summary"]["before_filtering"]["total_reads"]
+            except Exception as e:
+                logger.warning(f"Could not parse pre-host filter reads from fastp JSON: {e}")
+        elif trimarg and os.path.isfile(pre_qual_json):
+            # trim=True, filter=True: use post-trim count from fastp.json as pre-host count
+            try:
+                with open(pre_qual_json, "r") as f:
+                    data = json.load(f)
+                    readstats_dict["reads pre-host removal"] = data["summary"]["after_filtering"]["total_reads"]
+            except Exception as e:
+                logger.warning(f"Could not parse post-trim reads from fastp JSON: {e}")
     try:
         readstats_dict["reads for EsViritu denominator"] = filtered_reads
     except Exception as e:
