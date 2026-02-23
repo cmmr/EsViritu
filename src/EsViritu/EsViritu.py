@@ -23,7 +23,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.1.6'
+    __version__='1.2.0'
 
     esv_start_time = time.perf_counter()
 
@@ -97,6 +97,15 @@ def esviritu():
         dest="READ_FMT", type=str, default='paired',
         help='unpaired or paired. Format of input reads. If paired, must provide 2 files \
             (R1, then R2) after -r argument.'
+        )
+    optional_args.add_argument(
+        "-mmP" "--mm_preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
+        default='sr',
+        help=f'Default = sr -- minimap2 alignment preset. \
+            sr: short read data (Illumina, other high-accuracy short reads). \
+            map-hifi: HiFi PacBio reads. \
+            lr:hq: Oxford Nanopore reads. \
+            NOTE: You can only use -q True with "-mmP sr". fastp is not intended for long reads.'
         )
     optional_args.add_argument(
         "--db", 
@@ -206,6 +215,10 @@ def esviritu():
         if not os.path.isfile(inr):
             logger.error(f'input read file not found at {inr}. exiting.')
             sys.exit()
+
+    if args.QUAL and str(args.MM_SET) != 'sr':
+        logger.error(f'flag "-q True" is only compatible with "-mmP sr".')
+        sys.exit()
 
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')

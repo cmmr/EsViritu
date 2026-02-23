@@ -42,7 +42,7 @@ def is_tool(name):
 
 def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool, sample_name: str,
                 filter_db: str = None, paired: str = "paired", threads: int = 4, mmk: str = "500M",
-                dedup: bool = False) -> list:
+                mmp: str = "sr", dedup: bool = False) -> list:
     """
     Trim and/or filter .fastq reads using fastp (quality trim) and minimap2+pysam (host/spike-in filter).
     Args:
@@ -55,6 +55,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         paired: str, "paired" or "unpaired".
         threads: int, number of threads to use.
         mmk: str, minimap2 -K parameter
+        mmp: str, minimap2 preset for sequencing tech
         dedup: bool, whether to remove PCR duplicates with fastp --dedup.
     Returns:
         str: path to output fastq file with processed reads.
@@ -147,11 +148,11 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
         if paired == "paired":
             read1, read2 = input_fastq
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, read1, read2
+                "minimap2", "-t", str(threads), "-ax", mmp, "-K", mmk, filter_db, read1, read2
             ]
         else:
             minimap2_cmd = [
-                "minimap2", "-t", str(threads), "-ax", "sr", "-K", mmk, filter_db, input_fastq[0]
+                "minimap2", "-t", str(threads), "-ax", mmp, "-K", mmk, filter_db, input_fastq[0]
             ]
         samtools_view_cmd = ["samtools", "view", "-bS", "-"]
         samtools_sort_cmd = ["samtools", "sort", "-"]
@@ -301,7 +302,9 @@ def various_readstats(
     return yaml_readcount_path
 
 
-def minimap2_f(reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M") -> str:
+def minimap2_f(
+    reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M", mmp: str = "sr"
+    ) -> str:
 
     '''
     aligns read pairs to reference with minimap2, passes it to pysam,
@@ -312,13 +315,14 @@ def minimap2_f(reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = 
         cpus: number of CPUs to use for minimap2
         sorted_outbf: sorted bam file name
         mmk: -K parameter for minimap2
+        mmp: str, minimap2 preset for sequencing tech
     Returns:
         sorted_outbf
     '''
     
     mini2_command = [
         'minimap2', '-t', cpus, 
-        '-ax', 'sr', 
+        '-ax', mmp, 
         '--secondary=yes', 
         '--secondary-seq',
         '--sam-hit-only', "--MD",
