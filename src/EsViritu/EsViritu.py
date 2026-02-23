@@ -40,7 +40,9 @@ def esviritu():
         "-r", "--reads", nargs="+",
         dest="READS", required=True, 
         help='read file(s) in .fastq format. \
-            You can specify more than one separated by a space'
+            For unpaired reads of any kind, exactly one file path required. \
+            For paired reads, exactly two file paths required, separated by a space. \
+            Wildcards, e.g /path/to/reads/*fastq, will work but number of files must be correct.'
             )
     required_args.add_argument(
         "-s", "--sample", 
@@ -163,11 +165,16 @@ def esviritu():
         BLUE = "\033[94m"
         BRIGHT_BLUE = "\033[94m"
         YELLOW = "\033[93m"
+        RED = "\033[31m"
         RESET = "\033[0m"
         def format(self, record):
             msg = super().format(record)
             if record.levelno == logging.INFO:
                 msg = f"{self.YELLOW}{msg}{self.RESET}"
+            elif record.levelno == logging.WARNING:
+                msg = f"{self.BRIGHT_BLUE}{msg}{self.RESET}"
+            elif record.levelno == logging.ERROR:
+                msg = f"{self.RED}{msg}{self.RESET}"
             return msg
 
     # stream gets printed to terminal
@@ -205,10 +212,12 @@ def esviritu():
             f"{args.SAMPLE}_temp"
         )
     
-    READS = ' '.join(map(str,args.READS))
 
-    if len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
-        logger.warning("if stating --read_format paired, must provide exactly 2 read files")
+    if len(args.READS) != 2 and str(args.READ_FMT).lower() == "paired":
+        logger.error("if stating --read_format paired, must provide exactly 2 read files")
+        sys.exit()
+    elif len(args.READS) != 1 and str(args.READ_FMT).lower() == "unpaired":
+        logger.error("if stating --read_format unpaired, must provide exactly 1 read file")
         sys.exit()
 
     for inr in args.READS:
@@ -225,7 +234,10 @@ def esviritu():
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
-    db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
+    if str(args.MM_SET) == 'sr':
+        db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
+    else:
+        db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
     if not os.path.isfile(db_index):
         logger.error(f'database file not found at {db_index}. Exiting. \
             As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
