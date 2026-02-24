@@ -17,7 +17,7 @@ except:
 
 
 def esviritu():
-
+    """EsViritu CLI entrypoint function"""
     pathname = os.path.dirname(__file__)  
     esviritu_script_path = os.path.abspath(pathname)      
     print(esviritu_script_path) 
