@@ -25,6 +25,8 @@ If [installed](installation.md) as a package, command-line entry points are avai
 
     - [Interpretting Outputs](interpretting-outputs.md)
 
+    - [Making Custom Databases](custom-database.md)
+
 
 ## Citation
 **Wastewater sequencing reveals community and variant dynamics of the collective human virome**

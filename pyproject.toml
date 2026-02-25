@@ -34,6 +34,8 @@ where = ["src"]
 [project.scripts]
 EsViritu = "EsViritu:esviritu"
 summarize_esv_runs = "EsViritu.summarize_esv_runs:summarize_esv_runs"
+esv_create_taxonomy = "EsViritu.esv_create_taxonomy:main"
+esv_combine_tax = "EsViritu.esv_combine_tax:main"
 
 [project.urls]
 "Homepage" = "https://github.com/cmmr/EsViritu"
