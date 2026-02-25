@@ -533,7 +533,8 @@ def esviritu():
     ## Make bedtools-like windows coverage
     bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)
     windows_cov_df = bam_coverage_windows_fn(
-        third_map_bam
+        third_map_bam,
+        int(args.CPU)
     )
 
     windows_of = os.path.join(

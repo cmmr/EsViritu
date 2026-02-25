@@ -403,7 +403,7 @@ def minimap2_f(
 
     # make a sorted bam file
 
-    pysam.sort("-o", sorted_outbf, outbf)
+    pysam.samtools.sort("-@", str(cpus), "-o", sorted_outbf, outbf)
 
     pysam.index(sorted_outbf)
 
@@ -698,45 +698,74 @@ def assembly_table_maker(
     return merged_out, assem_df
 
 ## recapitulate coverage table without bedtools
-def bam_coverage_windows(bam_path: str) -> pl.DataFrame:
+def _coverage_windows_batch(args) -> list:
+    """Compute coverage windows for a batch of contigs with one BAM handle."""
+    bam_path, contigs = args
+    records = []
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        for contig in contigs:
+            contig_len = bam.get_reference_length(contig)
+            window_size = contig_len // 100
+            # If contig is shorter than 100bp, make window_size at least 1
+            window_size = max(1, window_size)
+            for i in range(100):
+                start = i * window_size
+                # Last window goes to end
+                end = contig_len if i == 99 else min((i + 1) * window_size, contig_len)
+                if start >= contig_len:
+                    break
+                # Get coverage for this window using pileup
+                window_length = end - start
+                coverage = [0] * window_length
+                for pileupcolumn in bam.pileup(contig=contig, max_depth=100_000, start=start, end=end, stepper="all"):
+                    pos_in_window = pileupcolumn.pos - start
+                    if 0 <= pos_in_window < window_length:
+                        coverage[pos_in_window] = pileupcolumn.nsegments
+                covered_bases = sum(1 for d in coverage if d > 0)
+                if covered_bases == 0:
+                    avg_cov = 0.0
+                else:
+                    avg_cov = float(sum(coverage)) / window_length if window_length > 0 else 0.0
+                records.append({
+                    "Accession": contig,
+                    "window_index": i,
+                    "window_start": start,
+                    "window_end": end,
+                    "average_coverage": avg_cov
+                })
+    return records
+
+
+def bam_coverage_windows(bam_path: str, max_workers: int = 1) -> pl.DataFrame:
     """
     Splits each reference contig in a BAM file into 100 equal windows and reports the average read coverage of each window.
     Returns a polars DataFrame with columns: contig, window_index, window_start, window_end, average_coverage
     """
 
-    bam = pysam.AlignmentFile(bam_path, "rb")
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        contigs = list(bam.references)
+    total_contigs = len(contigs)
+    if total_contigs == 0:
+        return pl.DataFrame([])
+
+    max_workers = max(1, int(max_workers))
+    if max_workers == 1 or total_contigs == 1:
+        records = _coverage_windows_batch((bam_path, contigs))
+        return pl.DataFrame(records)
+
+    num_workers = min(max_workers, total_contigs)
+    batch_size = max(1, total_contigs // (num_workers * 4))
+    batches = [
+        contigs[i:i + batch_size]
+        for i in range(0, total_contigs, batch_size)
+    ]
+    args_iter = [(bam_path, batch) for batch in batches]
+
     records = []
-    for contig in bam.references:
-        contig_len = bam.get_reference_length(contig)
-        window_size = contig_len // 100
-        # If contig is shorter than 100bp, make window_size at least 1
-        window_size = max(1, window_size)
-        for i in range(100):
-            start = i * window_size
-            # Last window goes to end
-            end = contig_len if i == 99 else min((i + 1) * window_size, contig_len)
-            if start >= contig_len:
-                break
-            # Get coverage for this window using pileup
-            window_length = end - start
-            coverage = [0] * window_length
-            for pileupcolumn in bam.pileup(contig=contig, max_depth = 100_000, start=start, end=end, stepper="all"):
-                pos_in_window = pileupcolumn.pos - start
-                if 0 <= pos_in_window < window_length:
-                    coverage[pos_in_window] = pileupcolumn.nsegments
-            covered_bases = sum(1 for d in coverage if d > 0)
-            if covered_bases == 0:
-                avg_cov = 0.0
-            else:
-                avg_cov = float(sum(coverage)) / window_length if window_length > 0 else 0.0
-            records.append({
-                "Accession": contig,
-                "window_index": i,
-                "window_start": start,
-                "window_end": end,
-                "average_coverage": avg_cov
-            })
-    bam.close()
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        for batch, batch_records in zip(batches, executor.map(_coverage_windows_batch, args_iter)):
+            records.extend(batch_records)
+
     return pl.DataFrame(records)
 
 ## read-based clustering function
@@ -959,7 +988,6 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
         # Update list of remaining assemblies
         remaining = [a for a in all_assemblies if a not in assigned]
     
-    logger.info("new script finished successfully")
     return pl.DataFrame(records)
 
 ## read ANI function
