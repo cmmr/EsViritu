@@ -1,6 +1,6 @@
 # Making Custom Databases
 
-EsViritu ships with a curated database of human and animal virus genomes, but you can build and use a custom database if you need to target a different set of viruses (e.g. plant viruses, phages, or a custom subset of NCBI sequences). One use case is improving consensus genome assembly by using lots of closely related genomes for a species of interest. See this example for [RSV](https://zenodo.org/records/18157379).
+EsViritu ships with a curated database of human, animal and plant virus genomes, but you can build and use a custom database if you need to target a different set of viruses (e.g. environmental viruses, phages, or a custom subset of NCBI sequences). One use case is improving consensus genome assembly by using lots of closely related genomes for a species of interest. See this example for [RSV](https://zenodo.org/records/18157379).
 
 Two helper commands are provided:
 
@@ -24,7 +24,7 @@ The directory with the three files are then passed to `EsViritu` via `--db`, res
 # Making an EsViritu-Style Database with NCBI Records
 
 !!! note
-    If you want to use custom records (not in NCBI), you'll have to generate a metadata file with the columns specified in the **Output Columns** section.
+    If you want to use custom records (not in NCBI), you'll have to generate a metadata file with the columns specified in the **Output columns** section.
 
 ---
 
@@ -163,7 +163,7 @@ esv_combine_tax standard_DB/virus_pathogen_database.all_metadata.tsv table1.tsv 
 
 ---
 
-## Step 4: Combine FASTA sequences
+## Step 4: Combine FASTA sequences and Index for minimap2
 
 Combine all the FASTA files that correspond to records in your metadata table. 
 

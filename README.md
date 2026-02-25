@@ -2,7 +2,7 @@
 
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/downloads.svg)](https://anaconda.org/bioconda/esviritu) [![Anaconda-Server Badge](https://anaconda.org/bioconda/esviritu/badges/version.svg)](https://anaconda.org/bioconda/esviritu)
 
-Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples.
+EsViritu is a read mapping pipeline for detection and measurement of human and animal virus pathogens using sequencing reads from metagenomic environmental or clinical samples.
 
 This approach is sensitive, specific, and ideal for exploring virus presence/absence/diversity within and between metagenomic or clinical samples. Interactive reports make it easy to see the breadth of read coverage for each detected virus. This tool should reliably detect virus reads with 80% ANI or greater to reference genomes.
 

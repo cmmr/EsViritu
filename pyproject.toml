@@ -8,7 +8,7 @@ version = "1.2.0"
 authors = [
   { name="Mike Tisza", email="michael.tisza@gmail.com" },
 ]
-description = "Read mapping pipeline for detection and measurement of human and animal virus pathogens from short read metagenomic environmental or clinical samples."
+description = "Read mapping pipeline for detection and measurement of human and animal virus pathogens using sequencing reads from metagenomic environmental or clinical samples."
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
