@@ -1,4 +1,12 @@
 #!/usr/bin/env python
+"""
+EsViritu.py
+
+Command Line Interface to run full EsViritu pipeline.
+
+Read mapping pipeline for detection and measurement of human and animal virus pathogens 
+using sequencing reads from metagenomic environmental or clinical samples.
+"""
 
 import argparse
 import time
@@ -29,7 +37,7 @@ def esviritu():
 
     parser = argparse.ArgumentParser(
         description='EsViritu is a read mapping pipeline for detection and measurement of \
-            human, animal, and plat virus pathogens from short read libraries. \
+            human, animal, and plant virus pathogens from sequencing libraries. \
             It is useful for clinical and environmental samples. \
             Version ' + str(__version__)
             )
