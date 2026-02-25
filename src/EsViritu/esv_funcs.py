@@ -410,66 +410,85 @@ def minimap2_f(
     # return an AlignmentFile
     return sorted_outbf
 
+
 ## take filtered .bam, make a coverm-like file
+def _calculate_contig_stats_from_bam(bamfile: pysam.AlignmentFile, contig: str,
+                                     include_secondary: bool = False) -> Dict:
+    """Calculate statistics for a single contig using an open BAM handle."""
+    length = bamfile.get_reference_length(contig)
+    if length == 0:
+        return None
+
+    # Initialize coverage array
+    coverage = np.zeros(length, dtype=np.uint32)
+    pi_list = []
+
+    # Get all reads for this contig
+    reads = list(bamfile.fetch(contig))
+    # only counting primary alignments
+    primary_reads = [r for r in reads if not r.is_secondary and not r.is_unmapped]
+
+    if not primary_reads:
+        return None
+
+    # Calculate coverage and base counts in one pass
+    base_counts = [Counter() for _ in range(length)]
+
+    for read in primary_reads:
+        # Update coverage
+        for block in read.get_blocks():
+            coverage[block[0]:block[1]] += 1
+
+        # Update base counts at each position
+        if not read.is_unmapped and not read.is_secondary or include_secondary:
+            ref_pos = read.reference_start
+            for qpos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
+                if qpos is not None and ref_pos is not None and ref_pos < length:
+                    base = read.query_sequence[qpos].upper()
+            if base in 'ACGTN':
+                base_counts[ref_pos][base] += 1
+
+    # Calculate Pi for each position with coverage
+    for pos in range(length):
+        if coverage[pos] > 0 and base_counts[pos]:
+            counts = base_counts[pos]
+            total = sum(counts.values())
+            max_count = max(counts.values())
+            pi = (total - max_count) / total if total > 0 else 0
+            pi_list.append(pi)
+
+    # Calculate statistics
+    covered_bases = np.count_nonzero(coverage)
+    mean_cov = np.mean(coverage) if length > 0 else 0
+    read_count = len(primary_reads)
+    avg_pi = round(statistics.mean(pi_list), 3) if pi_list else 0
+
+    return {
+        "Accession": contig,
+        "contig_length": length,
+        "covered_bases": int(covered_bases),
+        "read_count": read_count,
+        "mean_coverage": float(mean_cov),
+        "Pi": avg_pi
+    }
+
+
 def calculate_contig_stats(bam_path: str, contig: str, include_secondary: bool = False) -> Dict:
     """Calculate statistics for a single contig."""
     with pysam.AlignmentFile(bam_path, "rb") as bamfile:
-        length = bamfile.get_reference_length(contig)
-        if length == 0:
-            return None
+        return _calculate_contig_stats_from_bam(bamfile, contig, include_secondary)
 
-        # Initialize coverage array
-        coverage = np.zeros(length, dtype=np.uint32)
-        pi_list = []
-        
-        # Get all reads for this contig
-        reads = list(bamfile.fetch(contig))
-        # only counting primary alignments
-        primary_reads = [r for r in reads if not r.is_secondary and not r.is_unmapped]
 
-        if not primary_reads:
-            return None
-
-        # Calculate coverage and base counts in one pass
-        base_counts = [Counter() for _ in range(length)]
-
-        for read in primary_reads:
-            # Update coverage
-            for block in read.get_blocks():
-                coverage[block[0]:block[1]] += 1
-                
-            # Update base counts at each position
-            if not read.is_unmapped and not read.is_secondary or include_secondary:
-                ref_pos = read.reference_start
-                for qpos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
-                    if qpos is not None and ref_pos is not None and ref_pos < length:
-                        base = read.query_sequence[qpos].upper()
-                if base in 'ACGTN':
-                    base_counts[ref_pos][base] += 1
-
-        # Calculate Pi for each position with coverage
-        for pos in range(length):
-            if coverage[pos] > 0 and base_counts[pos]:
-                counts = base_counts[pos]
-                total = sum(counts.values())
-                max_count = max(counts.values())
-                pi = (total - max_count) / total if total > 0 else 0
-                pi_list.append(pi)
-
-        # Calculate statistics
-        covered_bases = np.count_nonzero(coverage)
-        mean_cov = np.mean(coverage) if length > 0 else 0
-        read_count = len(primary_reads)
-        avg_pi = round(statistics.mean(pi_list), 3) if pi_list else 0
-
-        return {
-            "Accession": contig,
-            "contig_length": length,
-            "covered_bases": int(covered_bases),
-            "read_count": read_count,
-            "mean_coverage": float(mean_cov),
-            "Pi": avg_pi
-        }
+def _calculate_contig_stats_batch(args) -> list:
+    """Process a batch of contigs with a single BAM handle for lower I/O overhead."""
+    bam_path, contigs, include_secondary = args
+    records = []
+    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+        for contig in contigs:
+            result = _calculate_contig_stats_from_bam(bamfile, contig, include_secondary)
+            if result is not None:
+                records.append(result)
+    return records
 
 def bam_to_coverm_table(bam_path: str, sample: str, max_workers: int, include_secondary: bool = False) -> pl.DataFrame:
     """
@@ -490,19 +509,25 @@ def bam_to_coverm_table(bam_path: str, sample: str, max_workers: int, include_se
         for read in bamfile.fetch(until_eof=True):
             if not read.is_unmapped:
                 contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
-        
-        # Process contigs in parallel
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-            for contig in contigs_with_reads:
-                futures.append(executor.submit(calculate_contig_stats, bam_path, contig, include_secondary))
-            
-            # Collect results
-            records = []
-            for future in futures:
-                result = future.result()
-                if result is not None:
-                    records.append(result)
+
+        contigs_with_reads = list(contigs_with_reads)
+        if not contigs_with_reads:
+            return pl.DataFrame([])
+
+        # Process contigs in parallel with batched work to reduce per-contig overhead
+        max_workers = max(1, int(max_workers))
+        num_workers = min(max_workers, len(contigs_with_reads))
+        batch_size = max(1, len(contigs_with_reads) // (num_workers * 4))
+        batches = [
+            contigs_with_reads[i:i + batch_size]
+            for i in range(0, len(contigs_with_reads), batch_size)
+        ]
+        args_iter = [(bam_path, batch, include_secondary) for batch in batches]
+
+        records = []
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            for batch_records in executor.map(_calculate_contig_stats_batch, args_iter):
+                records.extend(batch_records)
 
     # Add sample name and convert to DataFrame
     for record in records:
@@ -831,6 +856,18 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
     
     # Map assemblies to their total reads
     total_reads = {}
+
+    # Precompute per-assembly max avg_read_identity once (same semantics as prior get_avg_identity).
+    has_avg = 'avg_read_identity_a' in df.columns
+    max_avg_identity = {}
+    def _update_max_identity(asm, val):
+        if val is None:
+            return
+        cur = max_avg_identity.get(asm)
+        if cur is None:
+            max_avg_identity[asm] = val
+        elif val > cur:
+            max_avg_identity[asm] = val
     
     # Process edges and collect read counts
     for row in df.iter_rows(named=True):
@@ -838,6 +875,8 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
         min_reads = min(row['total_reads_a'], row['total_reads_b'])
         total_reads[row['assembly_a']] = row['total_reads_a']
         total_reads[row['assembly_b']] = row['total_reads_b']
+        if has_avg:
+            _update_max_identity(row['assembly_a'], row.get('avg_read_identity_a'))
         
         if min_reads == 0:
             continue
@@ -847,6 +886,11 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
             # Store direct connections in both directions
             direct_connections[row['assembly_a']].add(row['assembly_b'])
             direct_connections[row['assembly_b']].add(row['assembly_a'])
+
+    # Second pass to match prior ordering: all assembly_a identities first, then assembly_b.
+    if has_avg:
+        for row in df.iter_rows(named=True):
+            _update_max_identity(row['assembly_b'], row.get('avg_read_identity_b'))
     
     # Get all assemblies
     all_assemblies = set(df['assembly_a'].to_list()) | set(df['assembly_b'].to_list())
@@ -861,24 +905,11 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
     # Keep trying to cluster until no assemblies remain or no more clusters can be formed
     remaining = list(all_assemblies)
     while remaining:
-        # Sort remaining assemblies by read count (descending), breaking ties by highest avg_read_identity
-        def get_avg_identity(a):
-            # Try both possible columns for avg_read_identity
-            val = None
-            if 'avg_read_identity_a' in df.columns:
-                # Get max value for this assembly as either a or b
-                vals = df.filter((pl.col('assembly_a') == a) | (pl.col('assembly_b') == a))
-                vals_a = vals.filter(pl.col('assembly_a') == a)
-                vals_b = vals.filter(pl.col('assembly_b') == a)
-                id_a = vals_a['avg_read_identity_a'].to_list() if 'avg_read_identity_a' in vals_a.columns else []
-                id_b = vals_b['avg_read_identity_b'].to_list() if 'avg_read_identity_b' in vals_b.columns else []
-                all_ids = [x for x in id_a + id_b if x is not None]
-                if all_ids:
-                    val = max(all_ids)
-            if val is None:
-                return float('-inf')
-            return val
-        remaining.sort(key=lambda a: (total_reads.get(a, 0), get_avg_identity(a)), reverse=True)
+        # Sort remaining assemblies by read count (descending), breaking ties by max avg_read_identity
+        # (descending), then by assembly name (ascending / forward alphabetical) for determinism.
+        remaining.sort(
+            key=lambda a: (-total_reads.get(a, 0), -max_avg_identity.get(a, float('-inf')), a)
+        )
         
         # Try to create a new cluster with the assembly having most reads (break ties by avg_read_identity) as exemplar
         exemplar_candidate = remaining[0]
@@ -928,6 +959,7 @@ def cluster_assemblies_by_read_sharing(df, threshold=0.33) -> pl.DataFrame:
         # Update list of remaining assemblies
         remaining = [a for a in all_assemblies if a not in assigned]
     
+    logger.info("new script finished successfully")
     return pl.DataFrame(records)
 
 ## read ANI function
