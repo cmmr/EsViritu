@@ -1,4 +1,12 @@
 #!/usr/bin/env python
+"""
+EsViritu.py
+
+Command Line Interface to run full EsViritu pipeline.
+
+Read mapping pipeline for detection and measurement of human and animal virus pathogens 
+using sequencing reads from metagenomic environmental or clinical samples.
+"""
 
 import argparse
 import time
@@ -17,19 +25,19 @@ except:
 
 
 def esviritu():
-
+    """EsViritu CLI entrypoint function"""
     pathname = os.path.dirname(__file__)  
     esviritu_script_path = os.path.abspath(pathname)      
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.1.6'
+    __version__='1.2.0'
 
     esv_start_time = time.perf_counter()
 
     parser = argparse.ArgumentParser(
         description='EsViritu is a read mapping pipeline for detection and measurement of \
-            human, animal, and plat virus pathogens from short read libraries. \
+            human, animal, and plant virus pathogens from sequencing libraries. \
             It is useful for clinical and environmental samples. \
             Version ' + str(__version__)
             )
@@ -40,7 +48,9 @@ def esviritu():
         "-r", "--reads", nargs="+",
         dest="READS", required=True, 
         help='read file(s) in .fastq format. \
-            You can specify more than one separated by a space'
+            For unpaired reads of any kind, exactly one file path required. \
+            For paired reads, exactly two file paths required, separated by a space. \
+            Wildcards, e.g /path/to/reads/*fastq, will work but number of files must be correct.'
             )
     required_args.add_argument(
         "-s", "--sample", 
@@ -99,6 +109,15 @@ def esviritu():
             (R1, then R2) after -r argument.'
         )
     optional_args.add_argument(
+        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
+        default='sr',
+        help=f'Default = sr -- minimap2 alignment preset. \
+            sr: short read data (Illumina, other high-accuracy short reads). \
+            map-hifi: HiFi PacBio reads. \
+            lr:hq: Oxford Nanopore reads. \
+            NOTE: You can only use -q True with "-mmP sr". fastp is not intended for long reads.'
+        )
+    optional_args.add_argument(
         "--db", 
         dest="DB", type=str, default='default',
         help='path to sequence database. If not set, EsViritu looks for environmental \
@@ -115,7 +134,7 @@ def esviritu():
     optional_args.add_argument(
         "-mmK", "--minimap2-K", 
         dest="MMK", type=str, default="50M", 
-        help=f"Default: 500M -- minimap2 K parameter for Number of bases loaded \
+        help=f"Default: 50M -- minimap2 K parameter for Number of bases loaded \
             into memory to process in a mini-batch. Reducing this value lowers memory consumption"
         )
     optional_args.add_argument(
@@ -154,11 +173,16 @@ def esviritu():
         BLUE = "\033[94m"
         BRIGHT_BLUE = "\033[94m"
         YELLOW = "\033[93m"
+        RED = "\033[31m"
         RESET = "\033[0m"
         def format(self, record):
             msg = super().format(record)
             if record.levelno == logging.INFO:
                 msg = f"{self.YELLOW}{msg}{self.RESET}"
+            elif record.levelno == logging.WARNING:
+                msg = f"{self.BRIGHT_BLUE}{msg}{self.RESET}"
+            elif record.levelno == logging.ERROR:
+                msg = f"{self.RED}{msg}{self.RESET}"
             return msg
 
     # stream gets printed to terminal
@@ -196,10 +220,12 @@ def esviritu():
             f"{args.SAMPLE}_temp"
         )
     
-    READS = ' '.join(map(str,args.READS))
 
-    if len(READS.split()) != 2 and str(args.READ_FMT).lower() == "paired":
-        logger.warning("if stating --read_format paired, must provide exactly 2 read files")
+    if len(args.READS) != 2 and str(args.READ_FMT).lower() == "paired":
+        logger.error("if stating --read_format paired, must provide exactly 2 read files")
+        sys.exit()
+    elif len(args.READS) != 1 and str(args.READ_FMT).lower() == "unpaired":
+        logger.error("if stating --read_format unpaired, must provide exactly 1 read file")
         sys.exit()
 
     for inr in args.READS:
@@ -207,12 +233,19 @@ def esviritu():
             logger.error(f'input read file not found at {inr}. exiting.')
             sys.exit()
 
+    if args.QUAL and str(args.MM_SET) != 'sr':
+        logger.error(f'flag "-q True" is only compatible with "-mmP sr".')
+        sys.exit()
+
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
         args.DB = os.getenv('ESVIRITU_DB')
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
-    db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
+    if str(args.MM_SET) == 'sr':
+        db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
+    else:
+        db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
     if not os.path.isfile(db_index):
         logger.error(f'database file not found at {db_index}. Exiting. \
             As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
@@ -289,6 +322,7 @@ def esviritu():
         str(args.READ_FMT),
         str(args.CPU),
         str(args.MMK),
+        str(args.MM_SET),
         bool(args.DEDUP)
     )
 
@@ -327,7 +361,8 @@ def esviritu():
         trim_filt_reads,
         str(args.CPU),
         init_bam_f,
-        str(args.MMK)
+        str(args.MMK),
+        str(args.MM_SET)
     )
 
     logger.info(f"initial bam: {initial_map_bam}")
@@ -498,7 +533,8 @@ def esviritu():
     ## Make bedtools-like windows coverage
     bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)
     windows_cov_df = bam_coverage_windows_fn(
-        third_map_bam
+        third_map_bam,
+        int(args.CPU)
     )
 
     windows_of = os.path.join(

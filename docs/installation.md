@@ -2,12 +2,12 @@
 
 ### Current Versions
 
-Code: **v1.1.6**
+Code: **v1.2.0**
 
 Database: **v3.2.4**
 
 
-### Stable release via Bionconda (recommended)
+### Stable release via Bioconda (recommended)
 
 *NOTE: 2026-01-27 EsViritu v1.1.6 released and available on bioconda.*
 

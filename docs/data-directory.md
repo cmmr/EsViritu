@@ -16,7 +16,7 @@ Location: `<OUTPUT_DIR>/`
   - Aggregates contig-level results at the assembly level.
 
 - `<SAMPLE>.tax_profile.tsv`
-  -Taxonomic profile table.
+  - Taxonomic profile table.
   - Assigns taxonomy to records based on average nucleotide identity to reference
   - See `--species-threshold` (default 0.90)
   - See `--subspecies-threshold` (default 0.95)
