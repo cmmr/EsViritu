@@ -63,14 +63,11 @@ safe_google_font <- function(tbl, font_family = "Oswald") {
     utils::URLencode(font_family, reserved = TRUE)
   )
 
-  can_fetch <- FALSE
-  if (requireNamespace("curl", quietly = TRUE)) {
-    can_fetch <- tryCatch({
-      handle <- curl::new_handle(connecttimeout = 2, timeout = 5)
-      res <- curl::curl_fetch_memory(font_url, handle = handle)
-      res$status_code >= 200 && res$status_code < 400
-    }, error = function(e) FALSE)
-  }
+  can_fetch <- tryCatch({
+    con <- url(font_url, open = "r")
+    close(con)
+    TRUE
+  }, error = function(e) FALSE, warning = function(w) FALSE)
 
   if (!can_fetch) {
     warning(
