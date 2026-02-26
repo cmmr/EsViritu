@@ -111,7 +111,7 @@ You might run this as part of a bash script, snakemake pipeline, do your own ups
 
 *Required inputs:*
 
-`-r reads file (.fastq)`
+`-r reads file FASTQ format (can be gzipped .gz)`
 
 `-s sample name`
 
