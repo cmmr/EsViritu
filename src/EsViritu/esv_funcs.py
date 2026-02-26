@@ -1,4 +1,3 @@
-from ntpath import isfile
 import polars as pl
 import pysam
 import logging
@@ -10,11 +9,10 @@ import sys, os
 import shutil
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
-from collections import Counter
 import statistics
 from typing import Dict, Tuple
 from collections import defaultdict, Counter
-import shutil
+import argparse
 
 import yaml
 
@@ -353,7 +351,7 @@ def minimap2_f(
         '--secondary-seq',
         '--sam-hit-only', "--MD",
         '-f', '10000',
-        '-N' '100',
+        '-N', '100',
         '-p', '0.90',
         '-K', mmk,
         reference, 
@@ -445,8 +443,8 @@ def _calculate_contig_stats_from_bam(bamfile: pysam.AlignmentFile, contig: str,
             for qpos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
                 if qpos is not None and ref_pos is not None and ref_pos < length:
                     base = read.query_sequence[qpos].upper()
-            if base in 'ACGTN':
-                base_counts[ref_pos][base] += 1
+                if base in 'ACGTN':
+                    base_counts[ref_pos][base] += 1
 
     # Calculate Pi for each position with coverage
     for pos in range(length):
@@ -797,9 +795,7 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
                 contig_read_identities[contig].append(identity)
         except Exception:
             pass
-        # Also add for secondary alignments
-        #if read.has_tag("SA"):
-        #    contig_reads[contig].add(read.query_name)
+
     bamfile.close()
 
     # Step 2: Filter out contigs with no reads
@@ -1054,8 +1050,7 @@ def bam_to_paired_fastq(bam_path, fastq_path) -> list:
 
     Args:
         bam_path (str): Path to input BAM file.
-        fastq_r1_path (str): Path to output FASTQ file for read 1 (R1).
-        fastq_r2_path (str): Path to output FASTQ file for read 2 (R2).
+        fastq_path (str): Path to output FASTQ file
     Returns:
         list: [fastq_path]
     """

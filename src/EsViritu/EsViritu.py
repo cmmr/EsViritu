@@ -134,7 +134,7 @@ def esviritu():
     optional_args.add_argument(
         "-mmK", "--minimap2-K", 
         dest="MMK", type=str, default="50M", 
-        help=f"Default: 500M -- minimap2 K parameter for Number of bases loaded \
+        help=f"Default: 50M -- minimap2 K parameter for Number of bases loaded \
             into memory to process in a mini-batch. Reducing this value lowers memory consumption"
         )
     optional_args.add_argument(

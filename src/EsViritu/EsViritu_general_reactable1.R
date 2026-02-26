@@ -66,7 +66,7 @@ safe_google_font <- function(tbl, font_family = "Oswald") {
   can_fetch <- FALSE
   if (requireNamespace("curl", quietly = TRUE)) {
     can_fetch <- tryCatch({
-      handle <- curl::new_handle(nobody = TRUE, connecttimeout = 2, timeout = 5)
+      handle <- curl::new_handle(connecttimeout = 2, timeout = 5)
       res <- curl::curl_fetch_memory(font_url, handle = handle)
       res$status_code >= 200 && res$status_code < 400
     }, error = function(e) FALSE)
