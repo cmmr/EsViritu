@@ -837,35 +837,44 @@ def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFra
             avg_identity = float('nan')
         assembly_identities[assembly] = avg_identity
 
-    # Step 5: Compare each pair of assemblies for shared reads
-    assemblies = list(assembly_reads.keys())
+    # Step 5: Build inverted index (read -> assemblies) and count shared reads per pair
+    read_to_assemblies = defaultdict(list)
+    for asm, reads in assembly_reads.items():
+        for r in reads:
+            read_to_assemblies[r].append(asm)
+
+    # Count shared reads for each assembly pair (including self-self)
+    pair_shared = Counter()
+    for asms in read_to_assemblies.values():
+        if len(asms) == 1:
+            # self-self only
+            pair_shared[(asms[0], asms[0])] += 1
+        else:
+            asms_sorted = sorted(asms)
+            for i in range(len(asms_sorted)):
+                for j in range(i, len(asms_sorted)):
+                    pair_shared[(asms_sorted[i], asms_sorted[j])] += 1
+
+    # Build output records from counted pairs
     records = []
-    for i, a in enumerate(assemblies):
-        reads_a = assembly_reads[a]
+    for (a, b), n_shared in pair_shared.items():
+        tot_a = len(assembly_reads[a])
+        tot_b = len(assembly_reads[b])
+        share_a = n_shared / tot_a if tot_a else 0.0
+        share_b = n_shared / tot_b if tot_b else 0.0
         avg_id_a = assembly_identities.get(a, float('nan'))
-        # this will do a self-self comparison so contigs without any sharing don't get missed
-        for j in range(i, len(assemblies)):
-            b = assemblies[j]
-            reads_b = assembly_reads[b]
-            avg_id_b = assembly_identities.get(b, float('nan'))
-            shared = reads_a & reads_b
-            if shared:
-                n_shared = len(shared)
-                share_a = n_shared / len(reads_a) if reads_a else 0.0
-                share_b = n_shared / len(reads_b) if reads_b else 0.0
-                tot_a = len(reads_a) if reads_a else 0.0
-                tot_b = len(reads_b) if reads_b else 0.0
-                records.append({
-                    "assembly_a": a,
-                    "assembly_b": b,
-                    "total_reads_a": tot_a,
-                    "total_reads_b": tot_b,
-                    "n_shared_reads": n_shared,
-                    "share_of_a": share_a,
-                    "share_of_b": share_b,
-                    "avg_read_identity_a": avg_id_a,
-                    "avg_read_identity_b": avg_id_b
-                })
+        avg_id_b = assembly_identities.get(b, float('nan'))
+        records.append({
+            "assembly_a": a,
+            "assembly_b": b,
+            "total_reads_a": tot_a,
+            "total_reads_b": tot_b,
+            "n_shared_reads": n_shared,
+            "share_of_a": share_a,
+            "share_of_b": share_b,
+            "avg_read_identity_a": avg_id_a,
+            "avg_read_identity_b": avg_id_b
+        })
     return pl.DataFrame(records)
 
 
