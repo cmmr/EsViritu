@@ -31,7 +31,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.2.0'
+    __version__='1.2.1'
 
     esv_start_time = time.perf_counter()
 
@@ -444,7 +444,8 @@ def esviritu():
         trim_filt_reads,
         str(args.CPU),
         sec_bam_f,
-        str(args.MMK)
+        str(args.MMK),
+        str(args.MM_SET)
     )
 
     #########################
@@ -497,7 +498,8 @@ def esviritu():
         trim_filt_reads,
         str(args.CPU),
         third_bam_f,
-        str(args.MMK)
+        str(args.MMK),
+        str(args.MM_SET)
     )
 
     ## take third .bam, make final consensus .fastas
