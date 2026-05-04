@@ -160,7 +160,7 @@ def trim_filter(reads: list, outdir: str, tempdir: str, trim: bool, filter: bool
             # the 12 flag is like 4 + 8 (keep if unmapped and pair is unmapped)
             samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-1", unmapped_fastq1, "-2", unmapped_fastq2, "-"]
         else:
-            samtools_fastq_cmd = ["samtools", "fastq", "-f", "12", "-o", filtered_fastq, "-"]
+            samtools_fastq_cmd = ["samtools", "fastq", "-f", "4", "-0", filtered_fastq, "-"]
 
         # Pipe together: minimap2 | samtools view | samtools sort | samtools fastq
         p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE)
