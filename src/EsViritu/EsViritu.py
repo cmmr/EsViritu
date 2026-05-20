@@ -532,6 +532,11 @@ def esviritu():
         separator = "\t"
     )
 
+    # cover rare no primary alignments error
+    if third_coverm_like_dt.is_empty():
+        logger.error("CoverM-like table is empty, no primary alignments from third minimap2 iteration")
+        sys.exit()
+
     ## Make bedtools-like windows coverage
     bam_coverage_windows_fn = timed_function(logger=logger)(esvf.bam_coverage_windows)
     windows_cov_df = bam_coverage_windows_fn(
