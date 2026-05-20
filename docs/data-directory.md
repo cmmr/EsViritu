@@ -7,23 +7,27 @@ Location: `<OUTPUT_DIR>/`
 
 ## Files
 
-- `<SAMPLE>.detected_virus.info.tsv`
-  - Per-contig summary table of detected viral contigs.
-  - Contains detection and quantification metrics for each contig.
+!!! info "Detected Accessions"
+    `<SAMPLE>.detected_virus.info.tsv`
+    - Per-contig summary table of detected viral contigs.
+    - Contains detection and quantification metrics for each contig.
 
-- `<SAMPLE>.detected_virus.assembly_summary.tsv`
-  - Per-assembly summary table.
-  - Aggregates contig-level results at the assembly level.
+!!! info "Detected Genome Assemblies"
+    `<SAMPLE>.detected_virus.assembly_summary.tsv`
+    - Per-assembly summary table.
+    - Aggregates contig-level results at the assembly level.
 
-- `<SAMPLE>.tax_profile.tsv`
-  - Taxonomic profile table.
-  - Assigns taxonomy to records based on average nucleotide identity to reference
-  - See `--species-threshold` (default 0.90)
-  - See `--subspecies-threshold` (default 0.95)
+!!! info "Taxonomic Profile"
+    `<SAMPLE>.tax_profile.tsv`
+    - Taxonomic profile table.
+    - Assigns taxonomy to records based on average nucleotide identity to reference
+    - See `--species-threshold` (default 0.90)
+    - See `--subspecies-threshold` (default 0.95)
 
-- `<SAMPLE>.virus_coverage_windows.tsv`
-  - Coverage in fixed windows across each reference contig.
-  - Useful for visualizing coverage profiles and drops/gaps.
+!!! info "Coverage Windows"
+    `<SAMPLE>.virus_coverage_windows.tsv`
+    - Coverage in fixed windows across each reference contig.
+    - Useful for visualizing coverage profiles and drops/gaps.
 
 ## Notes
 - Temporary/intermediate files are written under `<OUTPUT_DIR>/<SAMPLE>_temp/` (unless you set `--temp`).

@@ -505,12 +505,16 @@ def bam_to_coverm_table(bam_path: str, sample: str, max_workers: int, include_se
         # Get contigs with reads
         contigs_with_reads = set()
         for read in bamfile.fetch(until_eof=True):
-            if not read.is_unmapped:
+            if not read.is_unmapped and not read.is_secondary:
                 contigs_with_reads.add(bamfile.get_reference_name(read.reference_id))
 
         contigs_with_reads = list(contigs_with_reads)
         if not contigs_with_reads:
-            return pl.DataFrame([])
+            return pl.DataFrame(schema={
+                "Accession": pl.Utf8, "contig_length": pl.Int64,
+                "covered_bases": pl.Int64, "read_count": pl.Int64,
+                "mean_coverage": pl.Float64, "Pi": pl.Float64, "sample": pl.Utf8
+            })
 
         # Process contigs in parallel with batched work to reduce per-contig overhead
         max_workers = max(1, int(max_workers))
