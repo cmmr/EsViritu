@@ -242,10 +242,7 @@ def esviritu():
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
-    if str(args.MM_SET) == 'sr':
-        db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
-    else:
-        db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
+    db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
     if not os.path.isfile(db_index):
         logger.error(f'database file not found at {db_index}. Exiting. \
             As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')

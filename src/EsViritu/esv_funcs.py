@@ -347,6 +347,8 @@ def minimap2_f(
     mini2_command = [
         'minimap2', '-t', cpus, 
         '-ax', mmp, 
+        '-k', '15',
+        '-w', '10',
         '--secondary=yes', 
         '--secondary-seq',
         '--sam-hit-only', "--MD",
