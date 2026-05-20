@@ -14,20 +14,20 @@ Location: `<OUTPUT_DIR>/`
 
 !!! info "Detected Genome Assemblies"
     `<SAMPLE>.detected_virus.assembly_summary.tsv`
-    - Per-assembly summary table.
-    - Aggregates contig-level results at the assembly level.
+    * Per-assembly summary table.
+    * Aggregates contig-level results at the assembly level.
 
 !!! info "Taxonomic Profile"
     `<SAMPLE>.tax_profile.tsv`
-    - Taxonomic profile table.
-    - Assigns taxonomy to records based on average nucleotide identity to reference
-    - See `--species-threshold` (default 0.90)
-    - See `--subspecies-threshold` (default 0.95)
+    * Taxonomic profile table.
+    * Assigns taxonomy to records based on average nucleotide identity to reference
+    * See `--species-threshold` (default 0.90)
+    * See `--subspecies-threshold` (default 0.95)
 
 !!! info "Coverage Windows"
     `<SAMPLE>.virus_coverage_windows.tsv`
-    - Coverage in fixed windows across each reference contig.
-    - Useful for visualizing coverage profiles and drops/gaps.
+    * Coverage in fixed windows across each reference contig.
+    * Useful for visualizing coverage profiles and drops/gaps.
 
 ## Notes
 - Temporary/intermediate files are written under `<OUTPUT_DIR>/<SAMPLE>_temp/` (unless you set `--temp`).
