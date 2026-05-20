@@ -54,14 +54,6 @@ DB files should be in `v3.2.4/`
 
 `conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.4`
 
-**5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
-
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
-
 ### Developmental verision
 ??? "Detailed Instructions"
     

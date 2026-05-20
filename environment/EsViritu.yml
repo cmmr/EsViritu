@@ -20,4 +20,3 @@ dependencies:
   - r-reactable
   - r-reactablefmtr
   - r-magrittr
-  - r-remotes
