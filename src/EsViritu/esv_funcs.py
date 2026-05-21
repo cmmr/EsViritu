@@ -344,11 +344,18 @@ def minimap2_f(
         sorted_outbf
     '''
     
-    mini2_command = [
-        'minimap2', '-t', cpus, 
-        '-ax', mmp, 
-        '-k', '15',
-        '-w', '10',
+    mini2_command = ['minimap2', '-t', cpus, '-a']
+
+    if mmp in ("sr", "lr:hq", "map-hifi"):
+        mini2_command += ['-x', mmp]
+    elif mmp == "sense":
+        #mini2_command += [
+        #    '-a', '-k', '15', '-w', '10', '-A', '1', 
+        #    '-B', '2', '-O', '4,24', '-E', '2,1'
+        #    ]
+        mini2_command += ['-x', 'sr', '-k', '15', '-w', '10']
+
+    mini2_command += [
         '--secondary=yes', 
         '--secondary-seq',
         '--sam-hit-only', "--MD",

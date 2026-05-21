@@ -109,13 +109,15 @@ def esviritu():
             (R1, then R2) after -r argument.'
         )
     optional_args.add_argument(
-        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
+        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq', 'sense'], 
         default='sr',
         help=f'Default = sr -- minimap2 alignment preset. \
             sr: short read data (Illumina, other high-accuracy short reads). \
             map-hifi: HiFi PacBio reads. \
             lr:hq: Oxford Nanopore reads. \
-            NOTE: You can only use -q True with "-mmP sr". fastp is not intended for long reads.'
+            sense: custom, high-sensitivity mode (better captures reads in 80-90% ANI-to-ref range) \
+            NOTE: You can only use -q True with "-mmP sr" or "-mmP sr". \
+            fastp is not intended for long reads.'
         )
     optional_args.add_argument(
         "--db", 
@@ -233,8 +235,8 @@ def esviritu():
             logger.error(f'input read file not found at {inr}. exiting.')
             sys.exit()
 
-    if args.QUAL and str(args.MM_SET) != 'sr':
-        logger.error(f'flag "-q True" is only compatible with "-mmP sr".')
+    if args.QUAL and str(args.MM_SET) not in ('sr', 'sense'):
+        logger.error(f'flag "-q True" is only compatible with "-mmP sr" or "-mmP sense".')
         sys.exit()
 
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
@@ -242,7 +244,11 @@ def esviritu():
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
-    db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
+    if str(args.MM_SET) == 'sr' and os.path.isfile(os.path.join(args.DB, "virus_pathogen_database.mmi")):
+        db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
+    else:
+        db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
+
     if not os.path.isfile(db_index):
         logger.error(f'database file not found at {db_index}. Exiting. \
             As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
