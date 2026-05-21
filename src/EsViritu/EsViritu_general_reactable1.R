@@ -57,44 +57,24 @@ combined_data$subspecies <- sub("^t__", "", combined_data$subspecies)
 
 magma_colors <- c("#F6E620", "#F98E09", "#E14E0E", "#8B0A50", "#000004")
 
-safe_google_font <- function(tbl, font_family = "Oswald") {
-  font_url <- sprintf(
-    "https://fonts.googleapis.com/css2?family=%s&display=swap",
-    utils::URLencode(font_family, reserved = TRUE)
-  )
-
-  can_fetch <- tryCatch({
-    con <- url(font_url, open = "r")
-    close(con)
-    TRUE
-  }, error = function(e) FALSE, warning = function(w) FALSE)
-
-  if (!can_fetch) {
-    warning(
-      sprintf(
-        "Skipping google_font('%s') because %s is unreachable.",
-        font_family,
-        font_url
-      ),
-      call. = FALSE
-    )
+local_font <- function(tbl, font_family = "Oswald") {
+  script_dir <- dirname(local({
+    argv <- commandArgs(trailingOnly = FALSE)
+    file_arg <- grep("^--file=", argv, value = TRUE)
+    if (length(file_arg)) normalizePath(sub("^--file=", "", file_arg[1]))
+    else normalizePath(sys.frame(1)$ofile)
+  }))
+  font_path <- file.path(script_dir, "fonts", "Oswald-Regular.ttf")
+  if (!file.exists(font_path)) {
+    warning("Bundled font not found: ", font_path, call. = FALSE)
     return(tbl)
   }
-
-  tryCatch(
-    google_font(tbl, font_family = font_family),
-    error = function(e) {
-      warning(
-        sprintf(
-          "Failed to apply google_font('%s'): %s. Continuing without custom font.",
-          font_family,
-          conditionMessage(e)
-        ),
-        call. = FALSE
-      )
-      tbl
-    }
+  font_b64 <- base64enc::base64encode(font_path)
+  css <- sprintf(
+    "@font-face { font-family: '%s'; src: url(data:font/ttf;base64,%s) format('truetype'); font-weight: 400; font-style: normal; } body, .reactable { font-family: '%s', sans-serif; }",
+    font_family, font_b64, font_family
   )
+  htmlwidgets::prependContent(tbl, htmltools::tags$style(css))
 }
 
 ## install vendored dataui if not already available
@@ -170,7 +150,7 @@ nice_table <- combined_data %>%
       format(Sys.time(), "%Y-%m-%d %H:%M"), args[5]
     )
   ) %>%
-  safe_google_font(font_family = "Oswald")
+  local_font(font_family = "Oswald")
 
 nice_table %>% save_reactable_test(
   sprintf("%s/%s_EsViritu_reactable.html", args[3], args[4])

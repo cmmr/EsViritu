@@ -28,7 +28,7 @@ dependencies = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-"EsViritu" = ["*.R"]
+"EsViritu" = ["*.R", "fonts/*"]
 
 [project.scripts]
 EsViritu = "EsViritu:esviritu"

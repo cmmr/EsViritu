@@ -20,3 +20,4 @@ dependencies:
   - r-reactable
   - r-reactablefmtr
   - r-magrittr
+  - r-base64enc
