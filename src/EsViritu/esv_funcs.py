@@ -344,18 +344,14 @@ def minimap2_f(
         sorted_outbf
     '''
     
-    mini2_command = ['minimap2', '-t', cpus, '-a']
+    map_command = ['minimap2', '-t', cpus, '-a']
 
     if mmp in ("sr", "lr:hq", "map-hifi"):
-        mini2_command += ['-x', mmp]
+        map_command += ['-x', mmp]
     elif mmp == "sense":
-        #mini2_command += [
-        #    '-a', '-k', '15', '-w', '10', '-A', '1', 
-        #    '-B', '2', '-O', '4,24', '-E', '2,1'
-        #    ]
-        mini2_command += ['-x', 'sr', '-k', '15', '-w', '10']
+        map_command += ['-x', 'sr', '-k', '11', '-w', '10']
 
-    mini2_command += [
+    map_command += [
         '--secondary=yes', 
         '--secondary-seq',
         '--sam-hit-only', "--MD",
@@ -369,7 +365,7 @@ def minimap2_f(
 
     # Launch process, to stdout and catch it with pysam
     with subprocess.Popen(
-        mini2_command,
+        map_command,
         stdout=subprocess.PIPE,
         #stderr=STDOUT
         ) as mini2_proc:
