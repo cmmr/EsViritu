@@ -116,7 +116,7 @@ def esviritu():
             map-hifi: HiFi PacBio reads. \
             lr:hq: Oxford Nanopore reads. \
             sense: custom, high-sensitivity mode (better captures reads in 80-90% ANI-to-ref range) \
-            NOTE: You can only use -q True with "-mmP sr" or "-mmP sr". \
+            NOTE: You can only use -q True with "-mmP sr" or "-mmP sense". \
             fastp is not intended for long reads.'
         )
     optional_args.add_argument(
