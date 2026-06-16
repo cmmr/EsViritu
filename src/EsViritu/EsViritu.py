@@ -570,6 +570,19 @@ def esviritu():
         separator = "\t"
     )
 
+    ## Refine taxonomy of consensus genomes via alignment-based LCA assignment
+    consensus_lca_taxonomy_fn = timed_function(logger=logger)(esvf.consensus_lca_taxonomy)
+    adj_tax_df = consensus_lca_taxonomy_fn(
+        second_consensus_fasta,
+        db_fasta,
+        vir_meta_df,
+        str(args.CPU),
+        str(args.TEMP_DIR),
+        str(args.SAMPLE),
+        str(args.MMK),
+        str(args.MM_SET)
+    )
+
     ## Make "main" and "assembly" output table
 
     assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
@@ -578,7 +591,8 @@ def esviritu():
         vir_meta_df,
         read_ani_df,
         filtered_reads,
-        str(args.SAMPLE)
+        str(args.SAMPLE),
+        adj_tax_df
     )
 
     main_of = os.path.join(
