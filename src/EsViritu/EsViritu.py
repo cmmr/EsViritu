@@ -31,7 +31,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.2.2'
+    __version__='1.3.0'
 
     esv_start_time = time.perf_counter()
 

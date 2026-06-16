@@ -778,12 +778,14 @@ def consensus_lca_taxonomy(
         _flush_record(cur_name, cur_canonical, cur_n)
 
     # --- Step 2: align consensus -> references with minimap2 (PAF + cs) ---
-    map_command = ["minimap2", "-t", str(cpus), "-c", "--cs"]
-    if mmp in ("sr", "lr:hq", "map-hifi"):
-        map_command += ["-x", mmp]
-    elif mmp == "sense":
-        map_command += ["-x", "sr", "-k", "11", "-w", "10"]
-    map_command += [
+    # use 'sense' settings
+    map_command = [
+        "minimap2", 
+        "-t", str(cpus), 
+        "-c", "--cs",
+        "-x", "sr", 
+        "-k", "11", 
+        "-w", "10",
         "--secondary=yes",
         "-f", "10000",
         "-N", "100",
@@ -791,7 +793,7 @@ def consensus_lca_taxonomy(
         "-K", mmk,
         db_fasta,
         consensus_fasta
-    ]
+        ]
 
     try:
         proc = subprocess.run(
