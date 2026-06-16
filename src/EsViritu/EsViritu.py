@@ -513,6 +513,7 @@ def esviritu():
     bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
     second_consensus_fasta = bam_to_consensus_fasta_fn(
         third_map_bam,
+        str(args.SAMPLE),
         sec_con_f
     )
 

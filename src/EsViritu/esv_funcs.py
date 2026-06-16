@@ -544,7 +544,7 @@ def bam_to_coverm_table(bam_path: str, sample: str, max_workers: int, include_se
     return pl.DataFrame(records)
 
 ## take filtered .bam, make preliminary consensus .fastas
-def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
+def bam_to_consensus_fasta(bam_path: str, sample: str, output_fasta: str = None) -> str:
     """
     Calls samtools consensus on the given sorted BAM file and writes the consensus FASTA.
     Only outputs consensus for records with aligned reads.
@@ -574,7 +574,7 @@ def bam_to_consensus_fasta(bam_path: str, output_fasta: str = None) -> str:
             for line in infile:
                 if line.startswith('>'):
                     # Append "_consensus" to the header line
-                    outfile.write(f"{line.rstrip()}_consensus\n")
+                    outfile.write(f"{line.rstrip()}_{sample}_consensus\n")
                 else:
                     outfile.write(line)
                     
@@ -748,10 +748,10 @@ def consensus_lca_taxonomy(
     cur_canonical = 0
     cur_n = 0
 
-    def _flush_record(name, canonical, n_count):
+    def _flush_record(name, canonical, n_count, sample):
         if name is None:
             return
-        acc = re.sub(r"_consensus$", "", name)
+        acc = re.sub(rf"_{re.escape(sample)}_consensus$", "", name)
         asm = acc_to_assembly.get(acc)
         if asm is None:
             logger.warning(f"consensus record {name} (accession {acc}) not found in DB metadata; skipping")
@@ -767,7 +767,7 @@ def consensus_lca_taxonomy(
     with open(consensus_fasta, "r") as fh:
         for line in fh:
             if line.startswith(">"):
-                _flush_record(cur_name, cur_canonical, cur_n)
+                _flush_record(cur_name, cur_canonical, cur_n, sample)
                 cur_name = line[1:].strip().split()[0]
                 cur_canonical = 0
                 cur_n = 0
@@ -775,7 +775,7 @@ def consensus_lca_taxonomy(
                 seq = line.strip().upper()
                 cur_canonical += sum(seq.count(b) for b in ("A", "C", "G", "T"))
                 cur_n += seq.count("N")
-        _flush_record(cur_name, cur_canonical, cur_n)
+        _flush_record(cur_name, cur_canonical, cur_n, sample)
 
     # --- Step 2: align consensus -> references with minimap2 (PAF + cs) ---
     # use 'sense' settings
