@@ -45,11 +45,15 @@ sum_coverage <- aggregate(
 names(sum_coverage)[3] <- "coverage"
 combined_data <- merge(genome_data, sum_coverage, by = c("sample_ID", "Accession"))
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
+combined_data$adj_taxonomy <- ifelse(
+  tolower(as.character(combined_data$adj_taxonomy)) %in% c("true", "t", "1"),
+  "T", "F"
+)
 keep <- c(
   "sample_ID", "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
   "read_count", "avg_read_identity", "Pi", "genus",
-  "species", "subspecies", "coverage"
+  "species", "subspecies", "adj_taxonomy", "coverage"
 )
 combined_data <- combined_data[, keep]
 combined_data$genus <- sub("^g__", "", combined_data$genus)
@@ -102,6 +106,10 @@ nice_table <- combined_data %>%
     columns = list(
       read_count = colDef(
         name = "# of Aligned Reads"
+      ),
+      adj_taxonomy = colDef(
+        name = "Tax Adjusted",
+        maxWidth = 90
       ),
       Percent_covered = colDef(
         name = "% Covered",

@@ -974,6 +974,24 @@ def assembly_table_maker(
     else:
         merged = merged.with_columns(pl.lit(False).alias("adj_taxonomy"))
 
+    # Name annotation: when taxonomy was adjusted, append a visual cue to 'Name' showing
+    # the finest classified adjusted taxon (Name still reflects the reconstruction
+    # reference; the suffix flags the divergence).
+    _fine_to_coarse = ["subspecies", "species", "genus", "family",
+                       "order", "tclass", "phylum", "kingdom"]
+    finest_adj = pl.coalesce([
+        pl.when(
+            pl.col(r).is_not_null() & ~pl.col(r).str.contains("unclassified")
+        ).then(pl.col(r).str.replace(r"^[a-z]__", ""))
+        for r in _fine_to_coarse
+    ]).fill_null("unclassified")
+    merged = merged.with_columns(
+        pl.when(pl.col("adj_taxonomy"))
+        .then(pl.col("Name") + pl.lit(" [tax adj: ") + finest_adj + pl.lit("]"))
+        .otherwise(pl.col("Name"))
+        .alias("Name")
+    )
+
     merged2 = merged.join(
         read_ani_df, on="Accession", how="left"
     ).select([
