@@ -580,8 +580,7 @@ def esviritu():
         str(args.CPU),
         str(args.TEMP_DIR),
         str(args.SAMPLE),
-        str(args.MMK),
-        str(args.MM_SET)
+        str(args.MMK)
     )
 
     ## Make "main" and "assembly" output table

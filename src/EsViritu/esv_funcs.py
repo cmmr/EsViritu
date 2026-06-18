@@ -687,7 +687,7 @@ def _matching_residues_from_cs(cs: str) -> int:
 
 def consensus_lca_taxonomy(
     consensus_fasta: str, db_fasta: str, vir_meta_df: pl.DataFrame,
-    cpus: str, tempdir: str, sample: str, mmk: str = "50M", mmp: str = "sr"
+    cpus: str, tempdir: str, sample: str, mmk: str = "50M"
     ) -> pl.DataFrame:
     """
     Refine taxonomic assignment of consensus genomes by aligning them back to the
@@ -713,7 +713,6 @@ def consensus_lca_taxonomy(
         tempdir: directory for the temp stats TSV
         sample: sample name
         mmk: minimap2 -K parameter
-        mmp: minimap2 preset for sequencing tech
     Returns:
         polars DataFrame keyed by consensus 'Assembly' with adjusted rank columns,
         'best_ref_assemblies', 'matching_residues', and an 'adj_taxonomy' boolean.
@@ -778,7 +777,9 @@ def consensus_lca_taxonomy(
         _flush_record(cur_name, cur_canonical, cur_n, sample)
 
     # --- Step 2: align consensus -> references with minimap2 (PAF + cs) ---
-    # use 'sense' settings
+    # Always use the high-sensitivity 'sense' settings regardless of the run's
+    # read preset: consensus genomes are reference-like sequences, so we want the
+    # most sensitive seeding (k=11, w=10) to recover all near-equal reference hits.
     map_command = [
         "minimap2", 
         "-t", str(cpus), 

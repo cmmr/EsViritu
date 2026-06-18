@@ -45,6 +45,10 @@ sum_coverage <- aggregate(
 names(sum_coverage)[3] <- "coverage"
 combined_data <- merge(genome_data, sum_coverage, by = c("sample_ID", "Accession"))
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
+# backward compatibility: tables from older runs may lack 'adj_taxonomy'
+if (is.null(combined_data$adj_taxonomy)) {
+  combined_data$adj_taxonomy <- "F"
+}
 combined_data$adj_taxonomy <- ifelse(
   tolower(as.character(combined_data$adj_taxonomy)) %in% c("true", "t", "1"),
   "T", "F"
