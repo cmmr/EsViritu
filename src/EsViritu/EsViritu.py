@@ -631,6 +631,8 @@ def esviritu():
         file = tax_of,
         separator = "\t"
     )
+    logger.info(f"taxonomy table: {tax_of}")
+
 
     # check if R script with libraries returns good exit code
     completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])
