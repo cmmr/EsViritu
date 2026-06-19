@@ -52,10 +52,14 @@ combined_data$adj_taxonomy <- ifelse(
   tolower(as.character(combined_data$adj_taxonomy)) %in% c("true", "t", "1"),
   "T", "F"
 )
+# backward compatibility: tables from older runs may lack 'consensus_ref_identity'
+if (is.null(combined_data$consensus_ref_identity)) {
+  combined_data$consensus_ref_identity <- NA_real_
+}
 keep <- c(
   "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
-  "read_count", "avg_read_identity", "Pi", "genus",
+  "read_count", "avg_read_identity", "consensus_ref_identity", "Pi", "genus",
   "species", "subspecies", "adj_taxonomy", "coverage"
 )
 combined_data <- combined_data[, keep]
@@ -136,6 +140,12 @@ nice_table <- combined_data %>%
       ),
       avg_read_identity = colDef(
         name = "Average Read Identity",
+        maxWidth = 80,
+        style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
+        format = colFormat(percent = TRUE, digits = 1)
+      ),
+      consensus_ref_identity = colDef(
+        name = "Consensus-to-Reference Identity",
         maxWidth = 80,
         style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
         format = colFormat(percent = TRUE, digits = 1)

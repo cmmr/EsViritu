@@ -715,13 +715,16 @@ def consensus_lca_taxonomy(
         mmk: minimap2 -K parameter
     Returns:
         polars DataFrame keyed by consensus 'Assembly' with adjusted rank columns,
-        'best_ref_assemblies', 'matching_residues', and an 'adj_taxonomy' boolean.
+        'best_ref_assemblies', 'matching_residues', 'consensus_ref_identity'
+        (cs-based canonical matches / PAF alignment block length, capped at 1.0),
+        and an 'adj_taxonomy' boolean.
         Empty DataFrame if no consensus records / alignments are available.
     """
 
     empty_schema = {
         "Assembly": pl.Utf8, **{r: pl.Utf8 for r in TAX_RANKS},
         "best_ref_assemblies": pl.Utf8, "matching_residues": pl.Int64,
+        "consensus_ref_identity": pl.Float64,
         "adj_taxonomy": pl.Boolean
     }
 
@@ -805,7 +808,10 @@ def consensus_lca_taxonomy(
         raise
 
     # --- Step 3: matching canonical residues per (consensus_record, ref_accession) ---
+    # pair_matches: cs-based canonical residue matches (numerator for identity)
+    # pair_aln_len: PAF alignment block length (denominator for identity)
     pair_matches = defaultdict(int)
+    pair_aln_len = defaultdict(int)
     for raw in proc.stdout.decode().splitlines():
         if not raw.strip():
             continue
@@ -829,20 +835,29 @@ def consensus_lca_taxonomy(
                 matches = 0
         if matches > 0:
             pair_matches[(query, target)] += matches
+            # PAF column 11 (index 10) = alignment block length
+            try:
+                pair_aln_len[(query, target)] += int(fields[10])
+            except (ValueError, IndexError):
+                pass
 
     # --- Step 4: collate matching residues by (consensus Assembly, ref Assembly) ---
     asm_pair_matches = defaultdict(int)
+    asm_pair_aln_len = defaultdict(int)
     for (query, target), matches in pair_matches.items():
         c_asm = record_to_assembly.get(query)
         r_asm = acc_to_assembly.get(target)
         if c_asm is None or r_asm is None:
             continue
         asm_pair_matches[(c_asm, r_asm)] += matches
+        asm_pair_aln_len[(c_asm, r_asm)] += pair_aln_len.get((query, target), 0)
 
     # group reference Assemblies (with totals) per consensus Assembly
     consensus_to_refs = defaultdict(dict)
+    consensus_to_ref_lens = defaultdict(dict)
     for (c_asm, r_asm), matches in asm_pair_matches.items():
         consensus_to_refs[c_asm][r_asm] = matches
+        consensus_to_ref_lens[c_asm][r_asm] = asm_pair_aln_len.get((c_asm, r_asm), 0)
 
     # --- Step 5: assign lineage / LCA per consensus Assembly ---
     out_records = []
@@ -862,11 +877,21 @@ def consensus_lca_taxonomy(
         original = assembly_lineage.get(c_asm, {r: None for r in TAX_RANKS})
         adj = any(assigned.get(r) != original.get(r) for r in TAX_RANKS)
 
+        # consensus-to-reference identity over the best (tied) reference assemblies:
+        # cs-based canonical matches / PAF alignment block length, capped at 1.0.
+        len_dict = consensus_to_ref_lens.get(c_asm, {})
+        best_match_sum = sum(ref_dict[r] for r in best_refs)
+        best_len_sum = sum(len_dict.get(r, 0) for r in best_refs)
+        cons_ref_id = (best_match_sum / best_len_sum) if best_len_sum > 0 else None
+        if cons_ref_id is not None:
+            cons_ref_id = min(cons_ref_id, 1.0)
+
         out_records.append({
             "Assembly": c_asm,
             **{r: assigned[r] for r in TAX_RANKS},
             "best_ref_assemblies": ",".join(best_refs),
             "matching_residues": int(max_match),
+            "consensus_ref_identity": cons_ref_id,
             "adj_taxonomy": bool(adj)
         })
 
@@ -964,7 +989,7 @@ def assembly_table_maker(
     # Override taxonomy per Assembly with consensus-alignment LCA assignment, if provided
     if adj_tax_df is not None and not adj_tax_df.is_empty():
         adj_sel = adj_tax_df.select(
-            ["Assembly"] + TAX_RANKS + ["adj_taxonomy"]
+            ["Assembly"] + TAX_RANKS + ["consensus_ref_identity", "adj_taxonomy"]
         ).rename({r: f"{r}_adj" for r in TAX_RANKS})
         merged = merged.join(adj_sel, on="Assembly", how="left")
         merged = merged.with_columns(
@@ -973,7 +998,10 @@ def assembly_table_maker(
             pl.col("adj_taxonomy").fill_null(False)
         ).drop([f"{r}_adj" for r in TAX_RANKS])
     else:
-        merged = merged.with_columns(pl.lit(False).alias("adj_taxonomy"))
+        merged = merged.with_columns(
+            pl.lit(False).alias("adj_taxonomy"),
+            pl.lit(None).cast(pl.Float64).alias("consensus_ref_identity")
+        )
 
     # Name annotation: when taxonomy was adjusted, append a visual cue to 'Name' showing
     # the finest classified adjusted taxon (Name still reflects the reconstruction
@@ -1001,7 +1029,7 @@ def assembly_table_maker(
         "Asm_length", "kingdom", "phylum", "tclass", "order",
         "family", "genus", "species", "subspecies", "adj_taxonomy", "RPKMF",
         "read_count", "covered_bases", "mean_coverage", 
-        "avg_read_identity", "Pi", "filtered_reads_in_sample"
+        "avg_read_identity", "consensus_ref_identity", "Pi", "filtered_reads_in_sample"
     ]).sort([
         "family", "genus", "species", "Assembly", "Segment"
     ])
@@ -1020,6 +1048,8 @@ def assembly_table_maker(
         pl.col("covered_bases").sum().alias("covered_bases"),
         # read ANI
         pl.col("avg_read_identity").mean().alias("avg_read_identity"),
+        # consensus-to-reference identity (constant within an Assembly)
+        pl.col("consensus_ref_identity").first().alias("consensus_ref_identity"),
         #Accessions
         pl.col("Accession").flatten(),
         #Segments
@@ -1412,23 +1442,35 @@ def bam_to_paired_fastq(bam_path, fastq_path) -> list:
 def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: float = 0.95) -> pl.DataFrame:
     """
     Create taxonomic profile with cutoffs at both subspecies and species levels from assembly dataframe.
-    Records with avg_read_identity % < sp_cutoff are labeled as "unclassified" 
-    at the subspecies level.
-    Records with avg_read_identity % < subsp_cutoff are labeled as "unclassified" 
+
+    The species/subspecies cutoffs are applied against the consensus-to-reference
+    identity (consensus_ref_identity) whenever it is available, falling back to
+    avg_read_identity when it is not. The consensus identity reflects true genomic
+    divergence to the closest reference (read error averaged out, measured against
+    the best-matching reference rather than only the chosen accession), so it avoids
+    artificially low read identity downgrading otherwise-classifiable records.
+
+    Records with effective identity < sp_cutoff are labeled as "unclassified"
     at the species level.
+    Records with effective identity < subsp_cutoff are labeled as "unclassified"
+    at the subspecies level.
 
     Args:
         assem_df: pl.DataFrame, Assembly dataframe from assembly_table_maker (second return value)
-        sp_cutoff: float, average read ANI cutoff for species-level classification (default 90.0)
-        subsp_cutoff: float, average read ANI cutoff for subspecies-level classification (default 95.0)
+        sp_cutoff: float, ANI cutoff for species-level classification (default 0.90)
+        subsp_cutoff: float, ANI cutoff for subspecies-level classification (default 0.95)
         
     Returns:
         pl.DataFrame: tax_df DataFrame
     """
 
-    # Create taxonomical classification based on read identity threshold
+    # Effective identity for cutoffs: prefer consensus-to-reference identity,
+    # fall back to avg_read_identity when consensus identity is unavailable.
+    eff_id = pl.coalesce(["consensus_ref_identity", "avg_read_identity"])
+
+    # Create taxonomical classification based on the effective identity threshold
     adjust_df = assem_df.with_columns(
-        pl.when(pl.col("avg_read_identity") < sp_cutoff)
+        pl.when(eff_id < sp_cutoff)
         .then(
             pl.lit("s__unclassified_") + 
             pl.col("genus").str.replace("^g__", "").str.replace("^unclassified_", "")
@@ -1436,7 +1478,7 @@ def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: f
         .otherwise(pl.col("species"))
         .alias("species")
     ).with_columns(
-        pl.when(pl.col("avg_read_identity") < subsp_cutoff)
+        pl.when(eff_id < subsp_cutoff)
         .then(
             pl.lit("t__unclassified_") + 
             pl.col("species").str.replace("^s__", "").str.replace("^unclassified_", "")
@@ -1453,6 +1495,7 @@ def tax_profile(assem_df: pl.DataFrame, sp_cutoff: float = 0.90, subsp_cutoff: f
         pl.col("read_count").sum().alias("read_count"),
         pl.col("RPKMF").sum().alias("RPKMF"),
         pl.col("avg_read_identity").mean().alias("avg_read_identity"),
+        pl.col("consensus_ref_identity").mean().alias("consensus_ref_identity"),
         pl.col("Assembly").unique().alias("assembly_list")
     ]).sort([
         "family", "genus", "species", "subspecies"
