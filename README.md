@@ -24,7 +24,7 @@ As of EsViritu `v1.0.0` (and later):
 ## Schematic
 
 
-![Schematic](docs/schematic/pipeline_schematic_v1.0.0.png)
+![Schematic](docs/schematic/pipeline_schematic_v1.3.0.png)
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
