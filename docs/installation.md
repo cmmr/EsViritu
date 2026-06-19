@@ -9,7 +9,7 @@ Database: **v3.2.4**
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2026-05-20 EsViritu v1.2.2 released and available on bioconda.*
+*NOTE: 2026-06-19 EsViritu v1.3.0 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -79,7 +79,7 @@ DB files should be in `v3.2.4/`
     
     *Now follow the database set up instructions above*
 
-
+.
 ### Docker
 ??? "Basic Instructions"
     
