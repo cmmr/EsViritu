@@ -133,6 +133,12 @@ EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s s
 EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -q True -f True -p unpaired
 ```
 
+**Using ONT reads (appropriate minimap2 presets):**
+
+```bash
+EsViritu -r /path/to/reads/myreads.ONT.fastq -s sample_ABC -o myproject_EsViritu1 -p unpaired -mmP lr:hq
+```
+
 **Help menu**
 
 ```         
@@ -153,7 +159,11 @@ Then run the `summarize_esv_runs` command with the relative path to the output d
 summarize_esv_runs myproject_EsViritu1
 ```
 
-This command will generate the tables `myproject_EsViritu1.detected_virus.info.tsv`, `myproject_EsViritu1.detected_virus.assembly_summary.tsv`, `myproject_EsViritu1.tax_profile.tsv` and the reactable `myproject_EsViritu1.batch_detected_viruses.html`, which summarize information about all the samples in the given directory.
+This command will summarize information about all the samples in the given directory and generate the tables:
+ - `myproject_EsViritu1.detected_virus.info.tsv`
+ - `myproject_EsViritu1.detected_virus.assembly_summary.tsv`
+ - `myproject_EsViritu1.tax_profile.tsv`
+ - `myproject_EsViritu1.batch_detected_viruses.html` (reactable)
 
 # Citation
 
