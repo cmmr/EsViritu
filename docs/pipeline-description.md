@@ -19,4 +19,4 @@
 8)  A reactable (interactive table) with a visualization of read coverage profile `*.reactable.html` is generated.
 
 # Schematic
-![Pipeline schematic](schematic/pipeline_schematic_v1.0.0.png)
+![Pipeline schematic](schematic/pipeline_schematic_v1.3.0.png)

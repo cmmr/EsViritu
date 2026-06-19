@@ -45,11 +45,23 @@ sum_coverage <- aggregate(
 names(sum_coverage)[3] <- "coverage"
 combined_data <- merge(genome_data, sum_coverage, by = c("sample_ID", "Accession"))
 combined_data$Percent_covered <- combined_data$covered_bases / combined_data$Length
+# backward compatibility: tables from older runs may lack 'adj_taxonomy'
+if (is.null(combined_data$adj_taxonomy)) {
+  combined_data$adj_taxonomy <- "F"
+}
+combined_data$adj_taxonomy <- ifelse(
+  tolower(as.character(combined_data$adj_taxonomy)) %in% c("true", "t", "1"),
+  "T", "F"
+)
+# backward compatibility: tables from older runs may lack 'consensus_ref_identity'
+if (is.null(combined_data$consensus_ref_identity)) {
+  combined_data$consensus_ref_identity <- NA_real_
+}
 keep <- c(
   "sample_ID", "Name", "Accession", "Segment", "Assembly",
   "Length", "Percent_covered", "RPKMF",
-  "read_count", "avg_read_identity", "Pi", "genus",
-  "species", "subspecies", "coverage"
+  "read_count", "avg_read_identity", "consensus_ref_identity", "Pi", "genus",
+  "species", "subspecies", "adj_taxonomy", "coverage"
 )
 combined_data <- combined_data[, keep]
 combined_data$genus <- sub("^g__", "", combined_data$genus)
@@ -58,168 +70,110 @@ combined_data$subspecies <- sub("^t__", "", combined_data$subspecies)
 
 magma_colors <- c("#F6E620", "#F98E09", "#E14E0E", "#8B0A50", "#000004")
 
-safe_google_font <- function(tbl, font_family = "Oswald") {
-  font_url <- sprintf(
-    "https://fonts.googleapis.com/css2?family=%s&display=swap",
-    utils::URLencode(font_family, reserved = TRUE)
-  )
-
-  can_fetch <- FALSE
-  if (requireNamespace("curl", quietly = TRUE)) {
-    can_fetch <- tryCatch({
-      handle <- curl::new_handle(nobody = TRUE, connecttimeout = 2, timeout = 5)
-      res <- curl::curl_fetch_memory(font_url, handle = handle)
-      res$status_code >= 200 && res$status_code < 400
-    }, error = function(e) FALSE)
-  }
-
-  if (!can_fetch) {
-    warning(
-      sprintf(
-        "Skipping google_font('%s') because %s is unreachable.",
-        font_family,
-        font_url
-      ),
-      call. = FALSE
-    )
+local_font <- function(tbl, font_family = "Oswald") {
+  script_dir <- dirname(local({
+    argv <- commandArgs(trailingOnly = FALSE)
+    file_arg <- grep("^--file=", argv, value = TRUE)
+    if (length(file_arg)) normalizePath(sub("^--file=", "", file_arg[1]))
+    else normalizePath(sys.frame(1)$ofile)
+  }))
+  font_path <- file.path(script_dir, "fonts", "Oswald-Regular.ttf")
+  if (!file.exists(font_path)) {
+    warning("Bundled font not found: ", font_path, call. = FALSE)
     return(tbl)
   }
-
-  tryCatch(
-    google_font(tbl, font_family = font_family),
-    error = function(e) {
-      warning(
-        sprintf(
-          "Failed to apply google_font('%s'): %s. Continuing without custom font.",
-          font_family,
-          conditionMessage(e)
-        ),
-        call. = FALSE
-      )
-      tbl
-    }
+  font_b64 <- base64enc::base64encode(font_path)
+  css <- sprintf(
+    "@font-face { font-family: '%s'; src: url(data:font/ttf;base64,%s) format('truetype'); font-weight: 400; font-style: normal; } body, .reactable { font-family: '%s', sans-serif; }",
+    font_family, font_b64, font_family
   )
+  htmlwidgets::prependContent(tbl, htmltools::tags$style(css))
 }
 
-## check for dataui
-is_dataui <- require(dataui)
+## install vendored dataui if not already available
+if (!requireNamespace("dataui", quietly = TRUE)) {
+  .this_script <- local({
+    argv <- commandArgs(trailingOnly = FALSE)
+    file_arg <- grep("^--file=", argv, value = TRUE)
+    if (length(file_arg)) normalizePath(sub("^--file=", "", file_arg[1]))
+    else sys.frame(1)$ofile
+  })
+  vendor_path <- file.path(dirname(.this_script), "dataui_vendored")
+  install.packages(vendor_path, repos = NULL, type = "source", quiet = TRUE)
+}
+suppressMessages(library(dataui))
 
-if (is_dataui == TRUE) {
-  suppressMessages(library(dataui))
-
-  nice_table <- combined_data %>%
-    reactable(
-      .,
-      pagination = TRUE,
-      filterable = TRUE,
-      showPageSizeOptions = TRUE,
-      pageSizeOptions = c(10, 20, 100),
-      defaultPageSize = 10,
-      columns = list(
-        read_count = colDef(
-          name = "# of Aligned Reads"
-        ),
-        Percent_covered = colDef(
-          name = "% Covered",
-          cell = data_bars(
-            data = .,
-            fill_color = magma_colors,
-            background = '#F1F1F1',
-            min_value = 0,
-            max_value = 1,
-            round_edges = TRUE,
-            text_position = 'outside-end',
-            number_fmt = scales::percent
-          )
-        ),
-        
-        RPKMF = colDef(
-          name = "RPKMF\nReads per Kilobase\nper Million Filtered Reads",
-          maxWidth = 150,
-          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2),
-          format = colFormat(digits = 2)
-        ),
-        avg_read_identity = colDef(
-          name = "Average Read Identity",
-          maxWidth = 80,
-          style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
-          format = colFormat(percent = TRUE, digits = 1)
-        ),
-        coverage = colDef(
-          filterable = FALSE,
-          width = 500,
-          cell = react_sparkline(
-            .,
-            height = 50,
-            decimals = 1,
-            show_area = TRUE,
-            area_color = "darkgreen",
-            line_curve = "cardinal",
-            highlight_points = highlight_points(max = "blue"),
-            labels = c("max"),
-            statline = "min",
-            statline_color = "black"
-          )))) %>% 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[3])) %>%
-    add_subtitle(
-      sprintf(
-        "Generated at %s",
-        format(Sys.time(), "%Y-%m-%d %H:%M")
-      )
-    ) %>%
-    safe_google_font(font_family = "Oswald")
-  
-} else {
-  keep_nodataui <- c(
-    "sample_ID", "Name", "Accession", "Segment", "Assembly",
-    "Length", "Percent_covered", "RPKMF",
-    "read_count", "avg_read_identity", "Pi", "genus",
-    "species", "subspecies"
-  )
-  nice_table <- combined_data[, keep_nodataui] %>%
-    reactable(
-      .,
-      pagination = TRUE,
-      filterable = TRUE,
-      showPageSizeOptions = TRUE,
-      pageSizeOptions = c(10, 20, 100),
-      defaultPageSize = 10,
-      columns = list(
-        Percent_covered = colDef(
-          cell = data_bars(
-            data = .,
-            fill_color = magma_colors,
-            background = '#F1F1F1',
-            min_value = 0,
-            max_value = 1,
-            round_edges = TRUE,
-            text_position = 'outside-end',
-            number_fmt = scales::percent
-          )
-        ),
-        
-        RPKMF = colDef(
-          maxWidth = 150,
-          style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2), 
-          format = colFormat(digits = 2)
-        ),
-        avg_read_identity = colDef(
-          name = "Average Read Identity",
-          maxWidth = 80,
-          style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
-          format = colFormat(percent = TRUE, digits = 1)
+nice_table <- combined_data %>%
+  reactable(
+    .,
+    pagination = TRUE,
+    filterable = TRUE,
+    showPageSizeOptions = TRUE,
+    pageSizeOptions = c(10, 20, 100),
+    defaultPageSize = 10,
+    columns = list(
+      read_count = colDef(
+        name = "# of Aligned Reads"
+      ),
+      adj_taxonomy = colDef(
+        name = "Tax Adjusted",
+        maxWidth = 90
+      ),
+      Percent_covered = colDef(
+        name = "% Covered",
+        cell = data_bars(
+          data = .,
+          fill_color = magma_colors,
+          background = '#F1F1F1',
+          min_value = 0,
+          max_value = 1,
+          round_edges = TRUE,
+          text_position = 'outside-end',
+          number_fmt = scales::percent
         )
-      )) %>% 
-    add_title(sprintf("%s EsViritu Detected virus Summary", args[3])) %>%
-    add_subtitle(
-      sprintf(
-        "Generated at %s",
-        format(Sys.time(), "%Y-%m-%d %H:%M")
-      )
-    ) %>%
-    safe_google_font(font_family = "Oswald")
-  
-}
+      ),
+      
+      RPKMF = colDef(
+        name = "RPKMF\nReads per Kilobase\nper Million Filtered Reads",
+        maxWidth = 150,
+        style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 2),
+        format = colFormat(digits = 2)
+      ),
+      avg_read_identity = colDef(
+        name = "Average Read Identity",
+        maxWidth = 80,
+        style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
+        format = colFormat(percent = TRUE, digits = 1)
+      ),
+      consensus_ref_identity = colDef(
+        name = "Consensus-to-Reference Identity",
+        maxWidth = 80,
+        style = color_scales(., colors = c("#e09c9c", "#93adc8"), bias = 2),
+        format = colFormat(percent = TRUE, digits = 1)
+      ),
+      coverage = colDef(
+        filterable = FALSE,
+        width = 500,
+        cell = react_sparkline(
+          .,
+          height = 50,
+          decimals = 1,
+          show_area = TRUE,
+          area_color = "darkgreen",
+          line_curve = "cardinal",
+          highlight_points = highlight_points(max = "blue"),
+          labels = c("max"),
+          statline = "min",
+          statline_color = "black"
+        )))) %>% 
+  add_title(sprintf("%s EsViritu Detected virus Summary", args[3])) %>%
+  add_subtitle(
+    sprintf(
+      "Generated at %s",
+      format(Sys.time(), "%Y-%m-%d %H:%M")
+    )
+  ) %>%
+  local_font(font_family = "Oswald")
 
 nice_table %>% save_reactable_test(
   sprintf(

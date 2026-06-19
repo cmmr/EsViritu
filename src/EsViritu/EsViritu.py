@@ -31,7 +31,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.2.2'
+    __version__='1.3.0'
 
     esv_start_time = time.perf_counter()
 
@@ -109,13 +109,15 @@ def esviritu():
             (R1, then R2) after -r argument.'
         )
     optional_args.add_argument(
-        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq'], 
+        "-mmP", "--minimap2-preset", dest="MM_SET", type=str, choices=['sr', 'map-hifi', 'lr:hq', 'sense'], 
         default='sr',
         help=f'Default = sr -- minimap2 alignment preset. \
             sr: short read data (Illumina, other high-accuracy short reads). \
             map-hifi: HiFi PacBio reads. \
             lr:hq: Oxford Nanopore reads. \
-            NOTE: You can only use -q True with "-mmP sr". fastp is not intended for long reads.'
+            sense: custom, high-sensitivity mode (better captures reads in 80-90% ANI-to-ref range) \
+            NOTE: You can only use -q True with "-mmP sr" or "-mmP sense". \
+            fastp is not intended for long reads.'
         )
     optional_args.add_argument(
         "--db", 
@@ -233,8 +235,8 @@ def esviritu():
             logger.error(f'input read file not found at {inr}. exiting.')
             sys.exit()
 
-    if args.QUAL and str(args.MM_SET) != 'sr':
-        logger.error(f'flag "-q True" is only compatible with "-mmP sr".')
+    if args.QUAL and str(args.MM_SET) not in ('sr', 'sense'):
+        logger.error(f'flag "-q True" is only compatible with "-mmP sr" or "-mmP sense".')
         sys.exit()
 
     if args.DB == "default" and os.getenv('ESVIRITU_DB') != None:
@@ -242,10 +244,11 @@ def esviritu():
     elif args.DB == "default":
         args.DB = esviritu_script_path.replace("src/EsViritu", "DBs/v3.1.0")
 
-    if str(args.MM_SET) == 'sr':
+    if str(args.MM_SET) == 'sr' and os.path.isfile(os.path.join(args.DB, "virus_pathogen_database.mmi")):
         db_index = os.path.join(args.DB, "virus_pathogen_database.mmi")
     else:
         db_index = os.path.join(args.DB, "virus_pathogen_database.fna")
+
     if not os.path.isfile(db_index):
         logger.error(f'database file not found at {db_index}. Exiting. \
             As of EsViritu v1.0.0, DB v3.1.0 or higher is required.')
@@ -510,6 +513,7 @@ def esviritu():
     bam_to_consensus_fasta_fn = timed_function(logger=logger)(esvf.bam_to_consensus_fasta)
     second_consensus_fasta = bam_to_consensus_fasta_fn(
         third_map_bam,
+        str(args.SAMPLE),
         sec_con_f
     )
 
@@ -567,6 +571,18 @@ def esviritu():
         separator = "\t"
     )
 
+    ## Refine taxonomy of consensus genomes via alignment-based LCA assignment
+    consensus_lca_taxonomy_fn = timed_function(logger=logger)(esvf.consensus_lca_taxonomy)
+    adj_tax_df = consensus_lca_taxonomy_fn(
+        second_consensus_fasta,
+        db_fasta,
+        vir_meta_df,
+        str(args.CPU),
+        str(args.TEMP_DIR),
+        str(args.SAMPLE),
+        str(args.MMK)
+    )
+
     ## Make "main" and "assembly" output table
 
     assembly_table_maker_fn = timed_function(logger=logger)(esvf.assembly_table_maker)
@@ -575,7 +591,8 @@ def esviritu():
         vir_meta_df,
         read_ani_df,
         filtered_reads,
-        str(args.SAMPLE)
+        str(args.SAMPLE),
+        adj_tax_df
     )
 
     main_of = os.path.join(
@@ -614,6 +631,8 @@ def esviritu():
         file = tax_of,
         separator = "\t"
     )
+    logger.info(f"taxonomy table: {tax_of}")
+
 
     # check if R script with libraries returns good exit code
     completedProc = subprocess.run(['Rscript', str(esviritu_script_path) + '/check_R_libraries1.R'])

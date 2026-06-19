@@ -24,7 +24,7 @@ As of EsViritu `v1.0.0` (and later):
 ## Schematic
 
 
-![Schematic](docs/schematic/pipeline_schematic_v1.0.0.png)
+![Schematic](docs/schematic/pipeline_schematic_v1.3.0.png)
 
 Logo by [Adrien Assie](https://github.com/aassie)
 
@@ -43,14 +43,14 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Current Versions
 
-Code: **v1.2.2**
+Code: **v1.3.0**
 
 Database: **v3.2.4**
 
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2026-05-20 EsViritu v1.2.2 released and available on bioconda.*
+*NOTE: 2026-06-19 EsViritu v1.3.0 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -95,15 +95,7 @@ DB files should be in `v3.2.4/`
 
 `conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.4`
 
-**5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
-
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
-
-**See development and container installation guides in the [documentation](https://esviritu.readthedocs.io/en/latest/).
+**See development and container installation guides in the [documentation](https://esviritu.readthedocs.io/en/latest/).**
 
 # Running the tool
 
@@ -141,6 +133,12 @@ EsViritu -r /path/to/reads/myreads.R1.fastq /path/to/reads/myreads.R2.fastq -s s
 EsViritu -r /path/to/reads/myreads.fastq -s sample_ABC -o myproject_EsViritu1 -q True -f True -p unpaired
 ```
 
+**Using ONT reads (appropriate minimap2 presets):**
+
+```bash
+EsViritu -r /path/to/reads/myreads.ONT.fastq -s sample_ABC -o myproject_EsViritu1 -p unpaired -mmP lr:hq
+```
+
 **Help menu**
 
 ```         
@@ -161,7 +159,11 @@ Then run the `summarize_esv_runs` command with the relative path to the output d
 summarize_esv_runs myproject_EsViritu1
 ```
 
-This command will generate the tables `myproject_EsViritu1.detected_virus.info.tsv`, `myproject_EsViritu1.detected_virus.assembly_summary.tsv`, `myproject_EsViritu1.tax_profile.tsv` and the reactable `myproject_EsViritu1.batch_detected_viruses.html`, which summarize information about all the samples in the given directory.
+This command will summarize information about all the samples in the given directory and generate the tables:
+ - `myproject_EsViritu1.detected_virus.info.tsv`
+ - `myproject_EsViritu1.detected_virus.assembly_summary.tsv`
+ - `myproject_EsViritu1.tax_profile.tsv`
+ - `myproject_EsViritu1.batch_detected_viruses.html` (reactable)
 
 # Citation
 

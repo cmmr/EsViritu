@@ -2,14 +2,14 @@
 
 ### Current Versions
 
-Code: **v1.2.2**
+Code: **v1.3.0**
 
 Database: **v3.2.4**
 
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2026-05-20 EsViritu v1.2.2 released and available on bioconda.*
+*NOTE: 2026-06-19 EsViritu v1.3.0 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
@@ -54,14 +54,6 @@ DB files should be in `v3.2.4/`
 
 `conda env config vars set ESVIRITU_DB=/path/to/esviritu_DB/v3.2.4`
 
-**5)  (OPTIONAL BUT RECOMMENDED) Install the `R` package `dataui` manually in an R session. Without `dataui` reports won't show genome coverage sparklines.**
-
-`R`
-
-then:
-
-`remotes::install_github("timelyportfolio/dataui")`
-
 ### Developmental verision
 ??? "Detailed Instructions"
     
@@ -87,7 +79,7 @@ then:
     
     *Now follow the database set up instructions above*
 
-
+.
 ### Docker
 ??? "Basic Instructions"
     

@@ -15,6 +15,11 @@ EsViritu, by design, finds the "best" reference genomes (assemblies) in its data
 
 Sometimes, reads align to a reference with low read ANI, e.g. 88% ANI. This suggests that a virus somewhat different than the reference is present in the sample. EsViritu does not have a *de facto* threshold to determine if the results support the presence of a known subspecies or species. The reason for this is the inconsistency of how different sub-fields of virology delineate different taxonomic levels.
 
+## Taxonomic adjustment via consensus-to-reference DB alignment and lowest common ancestor logic
+In some cases, a group of reads aligned to the "best" reference would align equally well to one or more other genomes from a different taxon (usually different subspecies in same species). Starting in `v.1.3.0`, EsViritu performs an additional step after consensus sequence generation (a.k.a reference-guided assembly) by aligning the consensus to all available genomes. If there are genomes from multiple taxa that match the consensus equally well, EsViritu reassigns that record to the lowest common ancestor. If there is a genome from a different taxon that aligns better, EsViritu reassigns that record to the alternative taxon.
+
+Taxonomy adjustments are reflected in the `Name` and `adj_taxonomy` fields in the relevant output tables.
+
 !!! Tip
     Users can set reasonable thresholds in downstream analysis, especially when having to analyze many samples.
     Here are some reasonable but non-definitive suggestions (which are the default thresholds in `.tax_profile.tsv` files):

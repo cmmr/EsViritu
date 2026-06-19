@@ -20,4 +20,4 @@ dependencies:
   - r-reactable
   - r-reactablefmtr
   - r-magrittr
-  - r-remotes
+  - r-base64enc
