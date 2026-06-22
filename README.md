@@ -43,14 +43,14 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Current Versions
 
-Code: **v1.3.0**
+Code: **v1.3.1**
 
 Database: **v3.2.4**
 
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2026-06-19 EsViritu v1.3.0 released and available on bioconda.*
+*NOTE: 2026-06-22 EsViritu v1.3.1 released and available on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 

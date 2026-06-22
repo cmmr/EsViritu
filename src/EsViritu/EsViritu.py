@@ -31,7 +31,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.3.0'
+    __version__='1.3.1'
 
     esv_start_time = time.perf_counter()
 
@@ -115,7 +115,7 @@ def esviritu():
             sr: short read data (Illumina, other high-accuracy short reads). \
             map-hifi: HiFi PacBio reads. \
             lr:hq: Oxford Nanopore reads. \
-            sense: custom, high-sensitivity mode (better captures reads in 80-90% ANI-to-ref range) \
+            sense: custom, high-sensitivity mode (better capture of reads in 80-90 percent ANI-to-ref range) \
             NOTE: You can only use -q True with "-mmP sr" or "-mmP sense". \
             fastp is not intended for long reads.'
         )
