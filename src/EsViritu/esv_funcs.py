@@ -376,7 +376,8 @@ def various_readstats(
 
 
 def minimap2_f(
-    reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M", mmp: str = "sr"
+    reference: str, reads: list, cpus: str, sorted_outbf, mmk: str = "500M",
+    mmp: str = "sr", minal: int = 100
     ) -> str:
 
     '''
@@ -389,6 +390,7 @@ def minimap2_f(
         sorted_outbf: sorted bam file name
         mmk: -K parameter for minimap2
         mmp: str, minimap2 preset for sequencing tech
+        minal: int, minimum alignment length to pass read-level filter.
     Returns:
         sorted_outbf
     '''
@@ -447,7 +449,7 @@ def minimap2_f(
                 except:
                     alignAcc: float=0
 
-                if alignLength >= 100 and alignProp >= 0.9 and alignAcc >= 0.8:
+                if alignLength >= minal and alignProp >= 0.9 and alignAcc >= 0.8:
 
                     filtbam.write(record)
 
@@ -1099,9 +1101,9 @@ def assembly_table_maker(
         # consensus-to-reference identity (constant within an Assembly)
         pl.col("consensus_ref_identity").first().alias("consensus_ref_identity"),
         #Accessions
-        pl.col("Accession").flatten(),
+        pl.col("Accession"),
         #Segments
-        pl.col("Segment").flatten(),
+        pl.col("Segment"),
     ).with_columns(
         (pl.col("read_count") / (pl.col("Asm_length") / 1000) / (filtered_reads / 1e6)).alias("RPKMF"),
         pl.col("Accession").list.eval(pl.element().cast(pl.String)),

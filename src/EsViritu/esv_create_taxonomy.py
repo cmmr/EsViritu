@@ -288,7 +288,7 @@ def main():
             right_on="taxid"
         ).with_columns(
             pl.col("Lineage")
-            .str.split_exact(";", 8)
+            .str.split_exact(";", len(field_list) - 1)
             .struct.rename_fields(field_list)
             .alias("fields")
         ).unnest(
