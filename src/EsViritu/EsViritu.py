@@ -31,7 +31,7 @@ def esviritu():
     print(esviritu_script_path) 
     def_workdir = os.getcwd()
 
-    __version__='1.3.3'
+    __version__='1.3.4'
 
     esv_start_time = time.perf_counter()
 
@@ -156,6 +156,13 @@ def esviritu():
         dest="DEDUP", type=esvf.str2bool, default=False,
         help='True or False. Remove PCR duplicates during fastp preprocessing? \
             This can reduce processing time and provide more accurate abundance estimates.'
+        )
+    optional_args.add_argument(
+        "--min-align-length",
+        dest="MINAL", type=int, default=100,
+        help='Default: 100. Minimum alignment length to pass read-level filter. \
+              I highly recommend against changing from default unless your sequencing \
+              reads are less than 100 nt, since the parameter will effect false postive rate.'
         )
     args = parser.parse_args()
 
@@ -359,24 +366,12 @@ def esviritu():
 
     logger.info(f"read stats file: {out_readstats_yaml}")
 
-    # map reads to virus DB and filter for good alignments
-    init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")
-    minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
-    initial_map_bam = minimap2_f_fn(
-        db_index,
-        trim_filt_reads,
-        str(args.CPU),
-        init_bam_f,
-        str(args.MMK),
-        str(args.MM_SET)
-    )
-
-    logger.info(f"initial bam: {initial_map_bam}")
-
-    ## check if any reads aligned or quit
-    if not esvf.bam_has_alignments(initial_map_bam):
+    def require_alignments(bam_path, stage):
+        if esvf.bam_has_alignments(bam_path):
+            return
         logger.error(
-            f"No reads aligned to the EsViritu DB in {initial_map_bam}. Exiting..."
+            f"No reads aligned after {stage} mapping in {bam_path} "
+            f"with --min-align-length {args.MINAL}. Exiting..."
         )
         if args.KEEP:
             logger.info(f"keeping temp files in {args.TEMP_DIR}")
@@ -387,7 +382,25 @@ def esviritu():
                     logger.info(f"Removed temporary directory {args.TEMP_DIR}")
             except Exception as e:
                 logger.warning(f"Failed to remove temp directory {args.TEMP_DIR}: {e}")
-        sys.exit()
+        sys.exit(1)
+
+    # map reads to virus DB and filter for good alignments
+    init_bam_f = os.path.join(str(args.TEMP_DIR), f"{str(args.SAMPLE)}.initial.filt.sorted.bam")
+    minimap2_f_fn = timed_function(logger=logger)(esvf.minimap2_f)
+    initial_map_bam = minimap2_f_fn(
+        db_index,
+        trim_filt_reads,
+        str(args.CPU),
+        init_bam_f,
+        str(args.MMK),
+        str(args.MM_SET),
+        int(args.MINAL)
+    )
+
+    logger.info(f"initial bam: {initial_map_bam}")
+
+    ## check if any reads aligned or quit
+    require_alignments(initial_map_bam, "initial")
 
     # Load virus info metadata table in polars
     vir_meta_df = pl.read_csv(
@@ -451,8 +464,10 @@ def esviritu():
         str(args.CPU),
         sec_bam_f,
         str(args.MMK),
-        str(args.MM_SET)
+        str(args.MM_SET),
+        int(args.MINAL)
     )
+    require_alignments(second_map_bam, "second")
 
     #########################
     ### 2 of 2 clustering ###
@@ -505,8 +520,10 @@ def esviritu():
         str(args.CPU),
         third_bam_f,
         str(args.MMK),
-        str(args.MM_SET)
+        str(args.MM_SET),
+        int(args.MINAL)
     )
+    require_alignments(third_map_bam, "third")
 
     ## take third .bam, make final consensus .fastas
     sec_con_f = os.path.join(
