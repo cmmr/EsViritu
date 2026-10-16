@@ -1189,101 +1189,141 @@ def bam_coverage_windows(bam_path: str, max_workers: int = 1) -> pl.DataFrame:
 
 ## read-based clustering function
 
-def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame') -> pl.DataFrame:
+def assembly_read_sharing_table(bam_path, meta_df: 'pl.DataFrame',
+                                chunk_reads: int = 200_000) -> pl.DataFrame:
     """
-    For a given BAM file and meta_df (with 'Accession' and 'Assembly'),
-    filter out contigs with no aligned reads, group contigs by Assembly, and compare each pair of contigs within each Assembly
-    based on how many read IDs they share (primary or secondary alignments).
-    Returns a polars DataFrame with Assembly, contig pairs, number of shared reads, share of total reads for each contig,
-    and the average read identity for each assembly.
-    """
-    bamfile = pysam.AlignmentFile(bam_path, "rb")
+    For a BAM file and meta_df (with 'Accession' and 'Assembly'), count for every
+    pair of assemblies how many reads (read names, so a pair counts once) align
+    to both (primary, secondary or supplementary alignments), and the average
+    read identity of each assembly.
+    Returns a polars DataFrame with one row per pair of assemblies that share at
+    least one read (self pairs included), in the order of the assemblies' first
+    contig in the reference.
 
-    # Step 1: Collect read IDs and read identities for each contig
-    contig_reads = defaultdict(set)
-    contig_read_identities = defaultdict(list)
+    bam_path must be grouped by read: all records of a read (pair) adjacent, as
+    in the unsorted minimap2 output written by minimap2_f
+    (<sample>.initial.filt.bam). The table is built in one streaming pass that
+    keeps only per-assembly counts and an assemblies x assemblies co-occurrence
+    matrix, so memory does not grow with the number of alignments.
+    """
+    if not set(["Accession", "Assembly"]).issubset(set(meta_df.columns)):
+        raise ValueError("meta_df must have columns 'Accession' and 'Assembly'")
+    contig_to_assembly = dict(zip(meta_df["Accession"].to_list(), meta_df["Assembly"].to_list()))
+
+    bamfile = pysam.AlignmentFile(bam_path, "rb")
+    if bamfile.header.to_dict().get("HD", {}).get("SO") == "coordinate":
+        bamfile.close()
+        raise ValueError(
+            f"{bam_path} is coordinate-sorted; assembly_read_sharing_table needs "
+            "the read-grouped (unsorted) minimap2 output")
+
+    n_refs = bamfile.nreferences
+    tid_asm = [None] * n_refs      # tid -> assembly index, -1 = contig not in meta_df
+    tid_seen = bytearray(n_refs)   # contigs with at least one mapped record
+    id_sum = [0.0] * n_refs        # running read identity sum and count per contig
+    id_n = [0] * n_refs
+    asm_names = []
+    asm_index = {}
+    cooc = np.zeros((0, 0), dtype=np.int64)
+    pending = Counter()            # sorted tuple of assembly indices -> number of reads
+    n_pending = 0
+
+    def flush():
+        nonlocal cooc, pending, n_pending
+        n = len(asm_names)
+        if cooc.shape[0] < n:
+            grown = np.zeros((n, n), dtype=np.int64)
+            grown[:cooc.shape[0], :cooc.shape[0]] = cooc
+            cooc = grown
+        for key, count in pending.items():
+            idx = np.fromiter(key, dtype=np.intp, count=len(key))
+            cooc[np.ix_(idx, idx)] += count
+        pending = Counter()
+        n_pending = 0
+
+    current = None
+    read_asms = set()
     for read in bamfile.fetch(until_eof=True):
         if read.is_unmapped:
             continue
-        contig = bamfile.get_reference_name(read.reference_id)
-        contig_reads[contig].add(read.query_name)
+        name = read.query_name
+        if name != current:
+            if read_asms:
+                pending[tuple(sorted(read_asms))] += 1
+                n_pending += 1
+                if n_pending >= chunk_reads:
+                    flush()
+            current = name
+            read_asms = set()
+        tid = read.reference_id
+        ai = tid_asm[tid]
+        if ai is None:
+            asm = contig_to_assembly.get(bamfile.get_reference_name(tid))
+            if asm is None:
+                ai = -1
+            else:
+                ai = asm_index.get(asm)
+                if ai is None:
+                    ai = asm_index[asm] = len(asm_names)
+                    asm_names.append(asm)
+            tid_asm[tid] = ai
+        tid_seen[tid] = 1
+        if ai >= 0:
+            read_asms.add(ai)
         # Calculate read identity if possible
         try:
             align_len = read.query_alignment_length
             nm = read.get_tag('NM') if read.has_tag('NM') else None
             if nm is not None and align_len > 0:
-                identity = (align_len - nm) / align_len
-                contig_read_identities[contig].append(identity)
+                id_sum[tid] += (align_len - nm) / align_len
+                id_n[tid] += 1
         except Exception:
             pass
-
+    if read_asms:
+        pending[tuple(sorted(read_asms))] += 1
+    flush()
     bamfile.close()
 
-    # Step 2: Filter out contigs with no reads
-    contig_reads = {k: v for k, v in contig_reads.items() if v}
-    contig_read_identities = {k: v for k, v in contig_read_identities.items() if v}
-    if not contig_reads:
+    if not any(tid_seen):
         return pl.DataFrame([])
 
-    # Step 3: Map contigs to assemblies
-    if not set(["Accession", "Assembly"]).issubset(set(meta_df.columns)):
-        raise ValueError("meta_df must have columns 'Accession' and 'Assembly'")
-    contig_to_assembly = dict(zip(meta_df["Accession"].to_list(), meta_df["Assembly"].to_list()))
+    # Assemblies in order of their first contig in the reference, i.e. the order
+    # in which a coordinate-sorted BAM first shows them.
+    order = []
+    placed = set()
+    asm_id_sum = defaultdict(float)
+    asm_id_n = defaultdict(int)
+    for tid in range(n_refs):
+        if not tid_seen[tid] or tid_asm[tid] < 0:
+            continue
+        ai = tid_asm[tid]
+        if ai not in placed:
+            placed.add(ai)
+            order.append(ai)
+        asm_id_sum[ai] += id_sum[tid]
+        asm_id_n[ai] += id_n[tid]
+    if not order:
+        return pl.DataFrame([])
 
-    # Group contigs by assembly
-    assembly_to_contigs = defaultdict(list)
-    for contig in contig_reads:
-        assembly = contig_to_assembly.get(contig, None)
-        if assembly is not None:
-            assembly_to_contigs[assembly].append(contig)
+    avg_id = [asm_id_sum[ai] / asm_id_n[ai] if asm_id_n[ai] else float('nan') for ai in order]
+    sub = cooc[np.ix_(order, order)]
+    totals = np.diag(sub).tolist()
+    rows, cols = np.triu_indices(len(order))
+    shared = sub[rows, cols]
+    keep = shared > 0
+    rows, cols, shared = rows[keep].tolist(), cols[keep].tolist(), shared[keep].tolist()
 
-    # Step 4: Build assembly-level read sets and average identities
-    assembly_reads = {}
-    assembly_identities = {}
-    for assembly, contigs in assembly_to_contigs.items():
-        reads = set()
-        identities = []
-        for contig in contigs:
-            reads.update(contig_reads[contig])
-            identities.extend(contig_read_identities.get(contig, []))
-        assembly_reads[assembly] = reads
-        # Calculate average read identity for the assembly
-        if identities:
-            avg_identity = float(np.mean(identities))
-        else:
-            avg_identity = float('nan')
-        assembly_identities[assembly] = avg_identity
-
-    # Step 5: Compare each pair of assemblies for shared reads
-    assemblies = list(assembly_reads.keys())
-    records = []
-    for i, a in enumerate(assemblies):
-        reads_a = assembly_reads[a]
-        avg_id_a = assembly_identities.get(a, float('nan'))
-        # this will do a self-self comparison so contigs without any sharing don't get missed
-        for j in range(i, len(assemblies)):
-            b = assemblies[j]
-            reads_b = assembly_reads[b]
-            avg_id_b = assembly_identities.get(b, float('nan'))
-            shared = reads_a & reads_b
-            if shared:
-                n_shared = len(shared)
-                share_a = n_shared / len(reads_a) if reads_a else 0.0
-                share_b = n_shared / len(reads_b) if reads_b else 0.0
-                tot_a = len(reads_a) if reads_a else 0.0
-                tot_b = len(reads_b) if reads_b else 0.0
-                records.append({
-                    "assembly_a": a,
-                    "assembly_b": b,
-                    "total_reads_a": tot_a,
-                    "total_reads_b": tot_b,
-                    "n_shared_reads": n_shared,
-                    "share_of_a": share_a,
-                    "share_of_b": share_b,
-                    "avg_read_identity_a": avg_id_a,
-                    "avg_read_identity_b": avg_id_b
-                })
-    return pl.DataFrame(records)
+    return pl.DataFrame({
+        "assembly_a": [asm_names[order[i]] for i in rows],
+        "assembly_b": [asm_names[order[j]] for j in cols],
+        "total_reads_a": [totals[i] for i in rows],
+        "total_reads_b": [totals[j] for j in cols],
+        "n_shared_reads": shared,
+        "share_of_a": [n / totals[i] for n, i in zip(shared, rows)],
+        "share_of_b": [n / totals[j] for n, j in zip(shared, cols)],
+        "avg_read_identity_a": [avg_id[i] for i in rows],
+        "avg_read_identity_b": [avg_id[j] for j in cols],
+    })
 
 
 ## cluster contigs on read sharing
