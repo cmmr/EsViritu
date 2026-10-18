@@ -5,11 +5,11 @@ You might run this as part of a bash script, snakemake pipeline, do your own ups
 
 *Required inputs:*
 
-`-r reads file FASTQ format (can be gzipped .gz)`
+`-r`: reads file FASTQ format (can be gzipped .gz)
 
-`-s sample name`
+`-s`: sample name (no spaces)
 
-`-o output directory (may be shared with other samples)`
+`-o`: output directory (may be shared with other samples)
 
 Activate the conda environment:
 
@@ -64,7 +64,15 @@ summarize_esv_runs myproject_EsViritu1
 ```
 
 This command will summarize information about all the samples in the given directory and generate the tables:
+
  - `myproject_EsViritu1.detected_virus.info.tsv`
+
  - `myproject_EsViritu1.detected_virus.assembly_summary.tsv`
+
  - `myproject_EsViritu1.tax_profile.tsv`
+
  - `myproject_EsViritu1.batch_detected_viruses.html` (reactable)
+
+## Postprocessing
+
+Check EsViritu virus detections against large NCBI databases with [postviritu](https://github.com/mtisza1/postviritu)

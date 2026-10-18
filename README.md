@@ -13,7 +13,7 @@ As of EsViritu `v1.0.0` (and later):
 
 1) Highly curated sequence-to-taxonomy database of known human, animal, and plant viruses.
 
-2) Single read sensitivity for detection (requires reads >= 100 nt).
+2) Single read sensitivity for detection (reads >= 100 nt are recommended).
 
 3) Assembly-aware genome reconstructions for segmented and non-segmented viruses.
 
@@ -50,11 +50,15 @@ Database: **v3.2.4**
 
 ### Stable release via Bioconda (recommended)
 
-*NOTE: 2026-07-20 EsViritu v1.3.3 released and queued for release on bioconda.*
+*NOTE: 2026-10-18 EsViritu v1.3.4 released on bioconda.*
 
 **1)  Create conda environment. `mamba` is preferable to `conda` for environment creation.**
 
 `mamba create -n EsViritu bioconda::esviritu`
+
+-OR- 
+
+`conda create -n EsViritu bioconda::esviritu`
 
 **2)  Activate the environment with `conda`**
 
@@ -103,11 +107,11 @@ You might run this as part of a bash script, snakemake pipeline, do your own ups
 
 *Required inputs:*
 
-`-r reads file FASTQ format (can be gzipped .gz)`
+`-r`: reads file FASTQ format (can be gzipped .gz)
 
-`-s sample name`
+`-s`: sample name (no spaces)
 
-`-o output directory (may be shared with other samples)`
+`-o`: output directory (may be shared with other samples)
 
 Activate the conda environment:
 
@@ -172,6 +176,12 @@ This command will summarize information about all the samples in the given direc
  - `myproject_EsViritu1.detected_virus.assembly_summary.tsv`
  - `myproject_EsViritu1.tax_profile.tsv`
  - `myproject_EsViritu1.batch_detected_viruses.html` (reactable)
+
+# Other Resources
+
+[Making a custom database for EsViritu](https://esviritu.readthedocs.io/en/latest/custom-database/)
+
+Checking EsViritu virus detections against large NCBI databases with [postviritu](https://github.com/mtisza1/postviritu)
 
 # Citation
 

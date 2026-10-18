@@ -29,8 +29,11 @@ If [installed](installation.md) as a package, command-line entry points are avai
 
 
 ## Citation
-**Wastewater sequencing reveals community and variant dynamics of the collective human virome**
 
-Michael Tisza, Sara Javornik Cregeen, Vasanthi Avadhanula, Ping Zhang, Tulin Ayvaz, Karen Feliz, Kristi L. Hoffman, Justin R. Clark, Austen Terwilliger, Matthew C. Ross, Juwan Cormier, David Henke, Catherine Troisi, Fuqing Wu, Janelle Rios, Jennifer Deegan, Blake Hansen, John Balliew, Anna Gitter, Kehe Zhang, Runze Li, Cici X. Bauer, Kristina D. Mena, Pedro A. Piedra, Joseph F. Petrosino, Eric Boerwinkle, Anthony W. Maresso
+**EsViritu is a sensitive and specific profiler for viral pathogen detection and genome recovery in metagenomes**
 
-https://doi.org/10.1038/s41467-023-42064-1
+Michael J. Tisza, Shelby R. Simar, Jackie K. Zorz, Sara J. Javornik Cregeen, Anthony W. Maresso
+
+<https://doi.org/10.64898/2026.09.29.755457>
+
+Your citations and GitHub Stars help keep `EsViritu` going!
