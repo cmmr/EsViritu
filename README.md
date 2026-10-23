@@ -43,7 +43,7 @@ Logo by [Adrien Assie](https://github.com/aassie)
 
 ### Current Versions
 
-Code: **v1.3.4**
+Code: **v1.3.5**
 
 Database: **v3.2.4**
 
