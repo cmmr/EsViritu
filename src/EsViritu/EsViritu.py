@@ -415,8 +415,9 @@ def esviritu():
 
     ## read-based clustering, attempt 1
     asm_read_sharing_table_fn = timed_function(logger=logger)(esvf.assembly_read_sharing_table)
+    # the read-grouped (unsorted) minimap2 output written next to the sorted BAM
     initial_read_comp_df = asm_read_sharing_table_fn(
-        initial_map_bam,
+        initial_map_bam.replace('.sorted.bam', '.bam'),
         vir_meta_df
     )
     i_read_comp_of = os.path.join(
@@ -475,7 +476,7 @@ def esviritu():
 
     ## read-based clustering, attempt 2
     sec_read_comp_df = asm_read_sharing_table_fn(
-        second_map_bam,
+        second_map_bam.replace('.sorted.bam', '.bam'),
         vir_meta_df
     )
     sec_read_comp_of = os.path.join(
