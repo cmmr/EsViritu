@@ -6,7 +6,7 @@
 
 2)  Filtered reads are aligned to a dereplicated database of human, animal, and plant virus genomes/segments. (read alignment: \>= 80% ANI, \>= 100 nt aligned, and \>= 90% read coverage)
 
-3)  Candidate reference genomes are dereplicated. First, a network of references (binned at the assembly level) sharing \>= 33% of reads aligned (union of read IDs) is generated. Then, local maxima references are determined by total reads aligned. Read ANI is calculated to break ties if two references have identical count of reads aligned. These references are carried forward for final quantification.
+3)  Candidate reference genomes are dereplicated. First, a network of references (binned at the assembly level) sharing \>= 33% of reads aligned (of the reference with fewer aligned reads; see `--read-share-threshold`) is generated. Then, local maxima references are determined by total reads aligned. Read ANI is calculated to break ties if two references have identical count of reads aligned. These references are carried forward for final quantification.
 
 4)  The reads from the original alignment are re-aligned to the dereplicated references.
 
