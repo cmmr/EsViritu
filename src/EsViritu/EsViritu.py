@@ -152,6 +152,12 @@ def esviritu():
             There is no perfect metric for this."
         )
     optional_args.add_argument(
+        "--read-share-threshold",
+        dest="READSHARE", type=float, default=0.33,
+        help=f"Default: 0.33 -- minimum fraction of reads shared between two references to cluster them\
+            during dereplication. The fraction is of the reference with fewer aligned reads."
+        )
+    optional_args.add_argument(
         "--dedup",
         dest="DEDUP", type=esvf.str2bool, default=False,
         help='True or False. Remove PCR duplicates during fastp preprocessing? \
@@ -431,7 +437,8 @@ def esviritu():
 
     cluster_assemblies_by_read_sharinge_fn = timed_function(logger=logger)(esvf.cluster_assemblies_by_read_sharing)
     read_clust_init_df = cluster_assemblies_by_read_sharinge_fn(
-        initial_read_comp_df
+        initial_read_comp_df,
+        float(args.READSHARE)
     )
     i_read_clust_of = os.path.join(
         str(args.TEMP_DIR),
@@ -489,7 +496,8 @@ def esviritu():
     )
 
     read_clust_sec_df = cluster_assemblies_by_read_sharinge_fn(
-        sec_read_comp_df
+        sec_read_comp_df,
+        float(args.READSHARE)
     )
     sec_read_clust_of = os.path.join(
         str(args.TEMP_DIR),
